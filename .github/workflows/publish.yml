@@ -38,7 +38,9 @@ jobs:
           echo "commit=$source_commit" >> "$GITHUB_OUTPUT"
           previous=$(curl --fail --silent --show-error --max-time 30 https://gta-free-stem.pages.dev/hosting-release.json || true)
           previous_commit=$(printf '%s' "$previous" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("sourceCommit",""))' 2>/dev/null || true)
-          if [ "$source_commit" = "$previous_commit" ]; then
+          backup=$(curl --fail --silent --show-error --max-time 30 https://rupayon123.github.io/hosting-release.json || true)
+          backup_commit=$(printf '%s' "$backup" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("sourceCommit",""))' 2>/dev/null || true)
+          if [ "$source_commit" = "$previous_commit" ] && [ "$source_commit" = "$backup_commit" ]; then
             echo 'changed=false' >> "$GITHUB_OUTPUT"
           else
             echo 'changed=true' >> "$GITHUB_OUTPUT"

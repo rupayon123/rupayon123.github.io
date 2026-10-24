@@ -8,4 +8,4 @@ The workflow builds public source main on a standard free GitHub-hosted Ubuntu r
 
 The separate source refresh workflow continues updating the original public native app feed. This repository does not run the collector or alter native feed URLs.
 
-The branded Cloudflare Pages deployment uses a Pages-only token stored in an encrypted repository Actions secret, exposed only to the publishing step. It activates no paid plan or billable runtime. The same reviewed build is then published to the GitHub Pages backup. Unchanged-source checks use the branded release manifest.
+The branded Cloudflare Pages deployment uses a Pages-only token stored in an encrypted repository Actions secret, exposed only to the publishing step. It activates no paid plan or billable runtime. The same reviewed build is then published to the GitHub Pages backup. Publication skips only when both hosts report the current source commit, so a partial publication can recover on the next run.
