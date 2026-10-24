@@ -1,0 +1,85 @@
+name: Publish free GTA website
+on:
+  schedule:
+    - cron: '47 */6 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: gta-public-pages
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      actions: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Check out public application source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: rupayon123/gta-free-stem-opportunities
+          ref: main
+          persist-credentials: false
+      - name: Check whether source changed
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_commit=$(git rev-parse HEAD)
+          echo "commit=$source_commit" >> "$GITHUB_OUTPUT"
+          previous=$(curl --fail --silent --show-error --max-time 30 https://rupayon123.github.io/hosting-release.json || true)
+          previous_commit=$(printf '%s' "$previous" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("sourceCommit",""))' 2>/dev/null || true)
+          if [ "$source_commit" = "$previous_commit" ]; then
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Set up Node
+        if: steps.source.outputs.changed == 'true'
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+      - name: Install reviewed dependencies
+        if: steps.source.outputs.changed == 'true'
+        run: npm ci
+      - name: Audit production dependencies
+        if: steps.source.outputs.changed == 'true'
+        run: npm audit --omit=dev --audit-level=high
+      - name: Verify source data and contracts
+        if: steps.source.outputs.changed == 'true'
+        run: npm run qa
+      - name: Build within free hosting limits
+        if: steps.source.outputs.changed == 'true'
+        run: npm run build:github-pages
+        env:
+          GTA_SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
+          NEXT_TELEMETRY_DISABLED: '1'
+      - name: Configure Pages
+        if: steps.source.outputs.changed == 'true'
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - name: Upload temporary publication
+        id: upload
+        if: steps.source.outputs.changed == 'true'
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: out
+          retention-days: 1
+      - name: Deploy static website
+        id: deploy
+        if: steps.source.outputs.changed == 'true'
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+      - name: Remove temporary upload after successful publication
+        if: steps.deploy.outcome == 'success' && steps.upload.outputs.artifact_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact_id }}
+        run: gh api --method DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID"
