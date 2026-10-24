@@ -78,9 +78,12 @@ jobs:
           python3 - <<'PYVERIFY'
           import json, os, time, urllib.request
           expected=os.environ['EXPECTED_SOURCE_COMMIT']
+          request=urllib.request.Request(
+              'https://gta-free-stem.pages.dev/hosting-release.json?source='+expected,
+              headers={'User-Agent':'GTA-Free-STEM-Release-Check/1.0 (+https://github.com/rupayon123/rupayon123.github.io)'})
           for attempt in range(6):
               try:
-                  with urllib.request.urlopen('https://gta-free-stem.pages.dev/hosting-release.json?source='+expected,timeout=30) as response:
+                  with urllib.request.urlopen(request,timeout=30) as response:
                       release=json.load(response)
                   assert release['sourceCommit']==expected,release
                   break
