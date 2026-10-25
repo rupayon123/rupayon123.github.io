@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
-      contents: read
+      contents: write
       pages: write
       id-token: write
       actions: write
@@ -113,3 +113,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ARTIFACT_ID: ${{ steps.upload.outputs.artifact_id }}
         run: gh api --method DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID"
+      - name: Check out hosting verification code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+          path: .hosting
+          persist-credentials: false
+      - name: Test publication receipt safeguards
+        run: python3 -m unittest discover -s .hosting/tests -v
+      - name: Verify both public hosts and record deployment health
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
+        run: python3 .hosting/scripts/record-publication.py
