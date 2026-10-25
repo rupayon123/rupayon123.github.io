@@ -107,8 +107,8 @@ jobs:
         id: deploy
         if: steps.source.outputs.changed == 'true'
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
-      - name: Remove temporary upload after successful publication
-        if: steps.deploy.outcome == 'success' && steps.upload.outputs.artifact_id != ''
+      - name: Remove temporary upload after the deployment attempt
+        if: always() && steps.upload.outputs.artifact_id != ''
         env:
           GH_TOKEN: ${{ github.token }}
           ARTIFACT_ID: ${{ steps.upload.outputs.artifact_id }}
