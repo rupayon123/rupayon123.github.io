@@ -19,7 +19,6 @@ jobs:
       NODE_OPTIONS: --max-old-space-size=512
       NEXT_TELEMETRY_DISABLED: '1'
       WRANGLER_SEND_METRICS: 'false'
-      NPM_CONFIG_CACHE: ${{ runner.temp }}/gta-evidence-npm-cache
     steps:
       - name: Check out only the reviewed evidence workflow branch
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -48,6 +47,8 @@ jobs:
           package-manager-cache: false
       - name: Install only the existing locked QA dependencies without scripts or browsers
         working-directory: .github/gta-evidence
+        env:
+          NPM_CONFIG_CACHE: ${{ runner.temp }}/gta-evidence-npm-cache
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Run exactly one guarded Hub-dark scene
         id: browser
@@ -79,6 +80,7 @@ jobs:
         if: always() && steps.destination.outcome == 'success'
         id: deploy
         env:
+          NPM_CONFIG_CACHE: ${{ runner.temp }}/gta-evidence-npm-cache
           CLOUDFLARE_ACCOUNT_ID: 780712be4fc9ab0b0fc581c09735a77b
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
