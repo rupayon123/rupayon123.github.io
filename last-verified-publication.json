@@ -1,25 +1,27 @@
 {
   "verifiedDateUTC": "2026-10-30",
-  "sourceCommit": "01167a14692099509c53fe0b41e8cc9887e7483d",
-  "runUrl": "https://github.com/rupayon123/rupayon123.github.io/actions/runs/41008685522",
+  "sourceCommit": "d350774632f38b36904798fdbecc31e2ad4fbdb9",
+  "runUrl": "https://github.com/rupayon123/rupayon123.github.io/actions/runs/41012055950",
   "hosts": [
     {
       "origin": "https://gta-free-stem.pages.dev",
-      "sourceCommit": "01167a14692099509c53fe0b41e8cc9887e7483d",
-      "nativeFeedSha256": "93f863783f3ebaf4d921a686a44a41ade59c4b3e5ea963ed6ca8439992233b49",
-      "nativeFeedRecords": 1927,
-      "publicationBytes": 402531079,
-      "publicationFiles": 8010,
-      "nativeFeedBytes": 4286110
+      "sourceCommit": "d350774632f38b36904798fdbecc31e2ad4fbdb9",
+      "nativeFeedSha256": "b2c8e2dde6865686f57a2ad2e4eb01700d1e1bf1b783a8ba013e4c17e6e3ac0e",
+      "nativeFeedRecords": 1920,
+      "publicationBytes": 400871654,
+      "publicationFiles": 7978,
+      "nativeFeedBytes": 4262797,
+      "role": "website"
     },
     {
       "origin": "https://rupayon123.github.io",
-      "sourceCommit": "01167a14692099509c53fe0b41e8cc9887e7483d",
-      "nativeFeedSha256": "93f863783f3ebaf4d921a686a44a41ade59c4b3e5ea963ed6ca8439992233b49",
-      "nativeFeedRecords": 1927,
-      "publicationBytes": 402531079,
-      "publicationFiles": 8010,
-      "nativeFeedBytes": 4286110
+      "sourceCommit": "d350774632f38b36904798fdbecc31e2ad4fbdb9",
+      "nativeFeedSha256": "b2c8e2dde6865686f57a2ad2e4eb01700d1e1bf1b783a8ba013e4c17e6e3ac0e",
+      "nativeFeedRecords": 1920,
+      "publicationBytes": 400871654,
+      "publicationFiles": 7978,
+      "nativeFeedBytes": 4262797,
+      "role": "redirect-and-compatible-feed"
     }
   ]
 }
