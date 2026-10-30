@@ -22,6 +22,12 @@ class PublicationTests(unittest.TestCase):
         self.payloads = {origin + path: value for origin in module.HOSTS for path, value in (
             ("/hosting-release.json?source=" + self.source, json.dumps(self.manifest).encode()),
             ("/opportunities.json?source=" + self.source, self.body))}
+        redirect_spec = importlib.util.spec_from_file_location("redirect", Path(__file__).parents[1] / "scripts/prepare-redirect-site.py")
+        redirect = importlib.util.module_from_spec(redirect_spec); redirect_spec.loader.exec_module(redirect)
+        redirect_manifest = {**self.manifest, "siteMode": "redirect-v1", "canonicalOrigin": module.HOSTS[0], "redirectScriptSha256": hashlib.sha256(Path(redirect_spec.origin).read_bytes()).hexdigest()}
+        self.payloads[module.HOSTS[1] + "/hosting-release.json?source=" + self.source] = json.dumps(redirect_manifest).encode()
+        for path in ("/", "/high-school/"):
+            self.payloads[module.HOSTS[1] + path + "?release=" + self.source] = redirect.redirect_html(path).encode()
         self.read = Mock(side_effect=lambda url, limit: self.payloads[url])
         self.api = Mock(side_effect=self.missing_then_write)
         self.now = datetime(2026, 10, 25, 20, tzinfo=timezone.utc)
@@ -37,7 +43,7 @@ class PublicationTests(unittest.TestCase):
 
     def test_persisted_receipt_identifies_both_verified_hosts_and_exact_bytes(self):
         self.assertTrue(self.record())
-        self.assertEqual(self.read.call_count, 4)
+        self.assertEqual(self.read.call_count, 6)
         method, payload = self.api.call_args.args
         self.assertEqual(method, "PUT")
         self.assertEqual(payload["branch"], "main")
@@ -50,6 +56,18 @@ class PublicationTests(unittest.TestCase):
         stale = {**self.manifest, "sourceCommit": "c" * 40}
         self.payloads[module.HOSTS[1] + "/hosting-release.json?source=" + self.source] = json.dumps(stale).encode()
         with self.assertRaisesRegex(ValueError, "expected source"):
+            self.record()
+        self.api.assert_not_called()
+
+    def test_old_duplicate_site_cannot_be_recorded_as_redirected(self):
+        self.payloads[module.HOSTS[1] + "/hosting-release.json?source=" + self.source] = json.dumps(self.manifest).encode()
+        with self.assertRaisesRegex(ValueError, "canonical-site redirect"):
+            self.record()
+        self.api.assert_not_called()
+
+    def test_redirect_marker_alone_does_not_prove_pages_redirect(self):
+        self.payloads[module.HOSTS[1] + "/high-school/?release=" + self.source] = b"<html>Old duplicate website</html>"
+        with self.assertRaisesRegex(ValueError, "duplicate website"):
             self.record()
         self.api.assert_not_called()
 
@@ -91,7 +109,7 @@ class PublicationTests(unittest.TestCase):
         self.api.side_effect = None
         self.api.return_value = {"sha": "old-file-sha", "content": base64.b64encode(json.dumps(old).encode()).decode()}
         self.assertFalse(self.record())
-        self.assertEqual(self.read.call_count, 4)
+        self.assertEqual(self.read.call_count, 6)
         self.assertEqual(self.api.call_count, 1)
 
     def test_next_day_real_verification_updates_existing_receipt_using_its_sha(self):

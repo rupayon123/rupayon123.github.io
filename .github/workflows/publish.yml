@@ -29,6 +29,15 @@ jobs:
           repository: rupayon123/gta-free-stem-opportunities
           ref: main
           persist-credentials: false
+      - name: Check out hosting verification code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+          path: .hosting
+          persist-credentials: false
+      - name: Test publication and redirect safeguards
+        run: python3 -m unittest discover -s .hosting/tests -v
       - name: Check whether source changed
         id: source
         shell: bash
@@ -40,7 +49,10 @@ jobs:
           previous_commit=$(printf '%s' "$previous" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("sourceCommit",""))' 2>/dev/null || true)
           backup=$(curl --fail --silent --show-error --max-time 30 https://rupayon123.github.io/hosting-release.json || true)
           backup_commit=$(printf '%s' "$backup" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("sourceCommit",""))' 2>/dev/null || true)
-          if [ "$source_commit" = "$previous_commit" ] && [ "$source_commit" = "$backup_commit" ]; then
+          redirect_mode=$(printf '%s' "$backup" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("siteMode",""))' 2>/dev/null || true)
+          published_redirect_digest=$(printf '%s' "$backup" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("redirectScriptSha256",""))' 2>/dev/null || true)
+          redirect_digest=$(sha256sum .hosting/scripts/prepare-redirect-site.py | cut -d ' ' -f1)
+          if [ "$source_commit" = "$previous_commit" ] && [ "$source_commit" = "$backup_commit" ] && [ "$redirect_mode" = 'redirect-v1' ] && [ "$published_redirect_digest" = "$redirect_digest" ]; then
             echo 'changed=false' >> "$GITHUB_OUTPUT"
           else
             echo 'changed=true' >> "$GITHUB_OUTPUT"
@@ -93,6 +105,9 @@ jobs:
                   if attempt==5: raise
                   time.sleep(5)
           PYVERIFY
+      - name: Prepare old GitHub address redirects
+        if: steps.source.outputs.changed == 'true'
+        run: python3 .hosting/scripts/prepare-redirect-site.py out github-redirect-out
       - name: Configure Pages
         if: steps.source.outputs.changed == 'true'
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
@@ -101,7 +116,7 @@ jobs:
         if: steps.source.outputs.changed == 'true'
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
-          path: out
+          path: github-redirect-out
           retention-days: 1
       - name: Deploy static website
         id: deploy
@@ -113,15 +128,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ARTIFACT_ID: ${{ steps.upload.outputs.artifact_id }}
         run: gh api --method DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID"
-      - name: Check out hosting verification code
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          repository: ${{ github.repository }}
-          ref: ${{ github.sha }}
-          path: .hosting
-          persist-credentials: false
-      - name: Test publication receipt safeguards
-        run: python3 -m unittest discover -s .hosting/tests -v
       - name: Verify both public hosts and record deployment health
         env:
           GH_TOKEN: ${{ github.token }}

@@ -1,8 +1,9 @@
-"""Record real two-host verification, using only the hosting repo's short-lived token."""
+"""Verify the canonical website, old-address redirects and compatible feed copies."""
 import base64
 import hashlib
 import json
 import os
+from pathlib import Path
 import re
 import time
 import urllib.error
@@ -63,7 +64,19 @@ def verify_hosts(expected, read=read_url):
         if reference is not None and facts != reference:
             raise ValueError("Public hosts disagree about the release")
         reference = facts
-        verified.append({"origin": origin, **facts, "nativeFeedBytes": len(body)})
+        role = "website"
+        if origin == HOSTS[1]:
+            if manifest.get("siteMode") != "redirect-v1" or manifest.get("canonicalOrigin") != HOSTS[0]:
+                raise ValueError("Old address is not configured as a canonical-site redirect")
+            expected_redirect = hashlib.sha256((Path(__file__).parent / 'prepare-redirect-site.py').read_bytes()).hexdigest()
+            if manifest.get("redirectScriptSha256") != expected_redirect:
+                raise ValueError("Old address has stale redirect code")
+            for path in ("/", "/high-school/"):
+                page = read(origin + path + "?release=" + expected, 65_536).decode("utf-8")
+                if ('href="' + HOSTS[0] + path + '"') not in page or 'window.location.replace(target.href)' not in page or 'content="noindex,follow"' not in page:
+                    raise ValueError("Old address still presents a duplicate website")
+            role = "redirect-and-compatible-feed"
+        verified.append({"origin": origin, **facts, "nativeFeedBytes": len(body), "role": role})
     return verified
 
 
