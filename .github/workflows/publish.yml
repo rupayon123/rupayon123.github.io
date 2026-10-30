@@ -35,7 +35,7 @@ jobs:
           test -x /usr/bin/google-chrome
           sha256sum --check <<'HASHES'
           3888d1ff3f3750519eda4d45155918cae7c8bbbc21138de5a0413b093530e445  run-hub-dark.cjs
-          7740c9328b5df015514fbde199df04123b50c46220092e91de64e6c4782acbd6  run-linux-guard.py
+          7254ace911b20f0aa6981ba71e84a1dd2eab5a6087be495e946e16eac592e5b4  run-linux-guard.py
           6dfd8a7b2a0b961f43beb72aee57257170e8508c03eea9320e442cab6f1573d8  sanitize-evidence.py
           de4f8389d706f7a883ae0b1ae89fcef737b81d6180de1b2f89bfa29eb6c9752b  package.json
           6555d517e288f9cee7472e19f432db248f9c6b43673f90e25da43d4236725032  package-lock.json
