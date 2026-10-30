@@ -1,135 +1,124 @@
-name: Publish free GTA website
+name: Review Hub dark browser evidence
 on:
-  schedule:
-    - cron: '47 */6 * * *'
   workflow_dispatch:
-  push:
-    branches: [main]
 permissions:
   contents: read
 concurrency:
-  group: gta-public-pages
+  group: gta-hub-dark-browser-evidence
   cancel-in-progress: false
 jobs:
-  publish:
-    runs-on: ubuntu-latest
+  hub-dark:
+    if: github.repository == 'rupayon123/rupayon123.github.io' && github.event.repository.private == false && github.ref_name == 'codex/browser-evidence-hub-dark-20261030'
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
-      actions: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      APP_COMMIT: 9f83e87e4447b805373ff9f7f206adb737e5c413
+      EVIDENCE_BRANCH: review-evidence
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+      NODE_OPTIONS: --max-old-space-size=512
+      NEXT_TELEMETRY_DISABLED: '1'
+      WRANGLER_SEND_METRICS: 'false'
+      NPM_CONFIG_CACHE: ${{ runner.temp }}/gta-evidence-npm-cache
     steps:
-      - name: Check out public application source
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Check out only the reviewed evidence workflow branch
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          repository: rupayon123/gta-free-stem-opportunities
-          ref: main
           persist-credentials: false
-      - name: Check out hosting verification code
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          repository: ${{ github.repository }}
-          ref: ${{ github.sha }}
-          path: .hosting
-          persist-credentials: false
-      - name: Test publication and redirect safeguards
-        run: python3 -m unittest discover -s .hosting/tests -v
-      - name: Check whether source changed
-        id: source
+      - name: Verify source packet and preview-only destination
+        working-directory: .github/gta-evidence
         shell: bash
         run: |
           set -euo pipefail
-          source_commit=$(git rev-parse HEAD)
-          echo "commit=$source_commit" >> "$GITHUB_OUTPUT"
-          previous=$(curl --fail --silent --show-error --max-time 30 https://gta-free-stem.pages.dev/hosting-release.json || true)
-          previous_commit=$(printf '%s' "$previous" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("sourceCommit",""))' 2>/dev/null || true)
-          backup=$(curl --fail --silent --show-error --max-time 30 https://rupayon123.github.io/hosting-release.json || true)
-          backup_commit=$(printf '%s' "$backup" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("sourceCommit",""))' 2>/dev/null || true)
-          redirect_mode=$(printf '%s' "$backup" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("siteMode",""))' 2>/dev/null || true)
-          published_redirect_digest=$(printf '%s' "$backup" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("redirectScriptSha256",""))' 2>/dev/null || true)
-          redirect_digest=$(sha256sum .hosting/scripts/prepare-redirect-site.py | cut -d ' ' -f1)
-          if [ "$source_commit" = "$previous_commit" ] && [ "$source_commit" = "$backup_commit" ] && [ "$redirect_mode" = 'redirect-v1' ] && [ "$published_redirect_digest" = "$redirect_digest" ]; then
-            echo 'changed=false' >> "$GITHUB_OUTPUT"
-          else
-            echo 'changed=true' >> "$GITHUB_OUTPUT"
-          fi
-      - name: Set up Node
-        if: steps.source.outputs.changed == 'true'
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+          test "$EVIDENCE_BRANCH" = review-evidence
+          test "$EVIDENCE_BRANCH" != main
+          test "$EVIDENCE_BRANCH" != review-accessibility
+          test -x /usr/bin/google-chrome
+          sha256sum --check <<'HASHES'
+          3888d1ff3f3750519eda4d45155918cae7c8bbbc21138de5a0413b093530e445  run-hub-dark.cjs
+          7740c9328b5df015514fbde199df04123b50c46220092e91de64e6c4782acbd6  run-linux-guard.py
+          6dfd8a7b2a0b961f43beb72aee57257170e8508c03eea9320e442cab6f1573d8  sanitize-evidence.py
+          de4f8389d706f7a883ae0b1ae89fcef737b81d6180de1b2f89bfa29eb6c9752b  package.json
+          6555d517e288f9cee7472e19f432db248f9c6b43673f90e25da43d4236725032  package-lock.json
+          HASHES
+      - name: Select Node without a persistent cache
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: '22'
-      - name: Install reviewed dependencies
-        if: steps.source.outputs.changed == 'true'
-        run: npm ci
-      - name: Audit production dependencies
-        if: steps.source.outputs.changed == 'true'
-        run: npm audit --omit=dev --audit-level=high
-      - name: Verify source data and contracts
-        if: steps.source.outputs.changed == 'true'
-        run: npm run qa
-      - name: Build within free hosting limits
-        if: steps.source.outputs.changed == 'true'
-        run: npm run build:github-pages
+          package-manager-cache: false
+      - name: Install only the existing locked QA dependencies without scripts or browsers
+        working-directory: .github/gta-evidence
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run exactly one guarded Hub-dark scene
+        id: browser
+        working-directory: .github/gta-evidence
+        continue-on-error: true
+        run: python3 run-linux-guard.py
+      - name: Prepare only sanitized original screenshots and the small public manifest
+        if: always() && steps.browser.outcome != 'skipped'
+        id: sanitize
+        working-directory: .github/gta-evidence
+        run: python3 sanitize-evidence.py
+      - name: Verify the existing project and separate preview destination
+        if: always() && steps.sanitize.outcome == 'success'
+        id: destination
         env:
-          GTA_SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
-          NEXT_TELEMETRY_DISABLED: '1'
-      - name: Publish branded free Cloudflare Pages site
-        if: steps.source.outputs.changed == 'true'
-        run: npx --yes wrangler@4.152.0 pages deploy out --project-name=gta-free-stem --branch=main
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          assert os.environ['EVIDENCE_BRANCH'] == 'review-evidence'
+          assert os.environ['EVIDENCE_BRANCH'] not in ['main','review-accessibility']
+          request=urllib.request.Request('https://api.cloudflare.com/client/v4/accounts/780712be4fc9ab0b0fc581c09735a77b/pages/projects/gta-free-stem',headers={'Authorization':'Bearer '+os.environ['CLOUDFLARE_API_TOKEN']})
+          with urllib.request.urlopen(request,timeout=30) as response:project=json.load(response)
+          assert project['success'] and project['result']['name']=='gta-free-stem'
+          assert project['result']['production_branch']=='main'
+          print('Existing project confirmed; evidence branch cannot target the app preview or production.')
+          PY
+      - name: Deploy only sanitized evidence to the separate non-indexed preview
+        if: always() && steps.destination.outcome == 'success'
+        id: deploy
         env:
           CLOUDFLARE_ACCOUNT_ID: 780712be4fc9ab0b0fc581c09735a77b
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          WRANGLER_SEND_METRICS: 'false'
-      - name: Verify branded publication before updating the backup
-        if: steps.source.outputs.changed == 'true'
-        env:
-          EXPECTED_SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
         run: |
-          python3 - <<'PYVERIFY'
-          import json, os, time, urllib.request
-          expected=os.environ['EXPECTED_SOURCE_COMMIT']
-          request=urllib.request.Request(
-              'https://gta-free-stem.pages.dev/hosting-release.json?source='+expected,
-              headers={'User-Agent':'GTA-Free-STEM-Release-Check/1.0 (+https://github.com/rupayon123/rupayon123.github.io)'})
-          for attempt in range(6):
-              try:
-                  with urllib.request.urlopen(request,timeout=30) as response:
-                      release=json.load(response)
-                  assert release['sourceCommit']==expected,release
-                  break
-              except Exception:
-                  if attempt==5: raise
-                  time.sleep(5)
-          PYVERIFY
-      - name: Prepare old GitHub address redirects
-        if: steps.source.outputs.changed == 'true'
-        run: python3 .hosting/scripts/prepare-redirect-site.py out github-redirect-out
-      - name: Configure Pages
-        if: steps.source.outputs.changed == 'true'
-        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
-      - name: Upload temporary publication
-        id: upload
-        if: steps.source.outputs.changed == 'true'
-        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
-        with:
-          path: github-redirect-out
-          retention-days: 1
-      - name: Deploy static website
-        id: deploy
-        if: steps.source.outputs.changed == 'true'
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
-      - name: Remove temporary upload after the deployment attempt
-        if: always() && steps.upload.outputs.artifact_id != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-          ARTIFACT_ID: ${{ steps.upload.outputs.artifact_id }}
-        run: gh api --method DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID"
-      - name: Verify both public hosts and record deployment health
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EXPECTED_SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
-        run: python3 .hosting/scripts/record-publication.py
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/gta-evidence-clean-deploy"
+          cd "$RUNNER_TEMP/gta-evidence-clean-deploy"
+          test ! -e wrangler.toml
+          test ! -e functions
+          npx --yes wrangler@4.152.0 pages deploy "$RUNNER_TEMP/gta-public-evidence" --project-name=gta-free-stem --branch=review-evidence --commit-hash="$APP_COMMIT"
+      - name: Verify public evidence indexing, exact app source and original PNG bytes
+        if: always() && steps.deploy.outcome == 'success'
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,urllib.request
+          base='https://review-evidence.gta-free-stem.pages.dev/'
+          with urllib.request.urlopen(base+'evidence.json',timeout=30) as response:
+              assert 'noindex' in response.headers.get('X-Robots-Tag','').lower()
+              manifest=json.load(response)
+          assert manifest['appSourceCommit']==os.environ['APP_COMMIT']
+          assert manifest['visualAcceptance'] is False
+          for image in manifest['screenshots']:
+              with urllib.request.urlopen(base+image['file'],timeout=30) as response:
+                  assert 'noindex' in response.headers.get('X-Robots-Tag','').lower()
+                  assert hashlib.sha256(response.read()).hexdigest()==image['sha256']
+          print(json.dumps({'evidenceManifest':base+'evidence.json','sourceCommit':manifest['appSourceCommit'],'imageCount':len(manifest['screenshots']),'testStatus':manifest['testStatus'],'visualAcceptance':False}))
+          PY
+      - name: Preserve the first test failure as the job result
+        if: always()
+        run: |
+          test '${{ steps.browser.outcome }}' = success
+          test '${{ steps.sanitize.outcome }}' = success
+          test '${{ steps.deploy.outcome }}' = success
+      - name: Remove only disposable evidence, profiles and caches from this VM
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import os,shutil
+          from pathlib import Path
+          root=Path(os.environ['RUNNER_TEMP'])
+          for name in ['gta-hub-dark-evidence','gta-public-evidence','gta-evidence-clean-deploy','gta-evidence-npm-cache']:
+              target=root/name
+              if target.exists():shutil.rmtree(target)
+          PY
