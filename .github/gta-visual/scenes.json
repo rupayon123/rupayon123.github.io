@@ -1,19 +1,18 @@
 {
-  "c-browse-light-interaction": {
-    "script": "run-browse-interaction.cjs",
+  "rtl-browse-light": {
+    "script": "run-rtl-layout-only.cjs",
     "args": [
       "browse",
       "light"
     ],
-    "scope": "Browse-light clean-baseline reflow diagnostic; other scenes unrun",
-    "family": "C_interaction",
+    "scope": "Standalone Browse-light RTL at verified 200%; saved-filter interactions use prior receipt",
+    "family": "RTL",
     "completionEvent": "C-SCENE-COMPLETE",
     "sourceCase": "browse-light immutable preview",
     "behaviorCases": [
-      "browse-light real support and scoped preset interactions",
       "browse-light actual RTL filter reflow"
     ],
     "viewportSection": null,
-    "scriptSHA256": "e68267d05c97bdfdbc3bde547defee7b879e5dd0eaa1004d2e69ca98796caa61"
+    "scriptSHA256": "23d0ad122b1a690d59181250adb72858949423a3e99078a2bb65880e5395c8e0"
   }
 }

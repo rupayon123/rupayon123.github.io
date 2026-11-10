@@ -69,6 +69,13 @@ if receipt['passed']:
   originals=[image for image in images if image['file'].startswith('screenshots/'+name+'-dialog-viewport-')]
   assert len(frames)==dialog_coverage[0]['frames']==len(originals) and 1<=len(frames)<=20
   assert all(image['width']==390 and image['height']==844 for image in originals)
+ elif SCENE['family']=='RTL':
+  assert cases_completed==1 and source_checks_completed==1 and completion[0]['passedCases']==2
+  assert completion[0]['surface']==SCENE['args'][0] and completion[0]['mode']==SCENE['args'][1]
+  assert len([e for e in events if e.get('event')=='clean-font200' and e.get('allComputedDoubled') and e.get('cardTitles',0)>0 and e.get('cardDescriptions',0)>0])==1
+  required=['-320-rtl-font200-sort','-320-rtl-font200-filters','-320-rtl-font200-cards','-320-rtl-font200-directory']
+  names={e['name'] for e in coverage}
+  assert all('-'.join(SCENE['args'])+suffix in names for suffix in required)
  elif SCENE['family']=='viewport':
   assert len(coverage)==1 and coverage[0]['name']==SCENE['viewportSection']
   frames=[e for e in events if e.get('event')=='real-viewport-section-frame' and e.get('name')==SCENE['viewportSection']]
