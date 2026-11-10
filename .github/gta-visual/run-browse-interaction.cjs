@@ -22,7 +22,6 @@ async function capture(page,name){
     const atCapture=await state();log('capture-state',{name,before,atCapture,focusIntentionallyUnchanged:true});
     assert(await page.evaluate(e=>document.activeElement===e,focused),'Capture must preserve original focus');
     const viewportTarget=path.join(CAPTURE,name+'-actual-viewport.png');await page.screenshot({path:viewportTarget,fullPage:false});const viewportPng=await pngMetadata(viewportTarget);const actualViewport=await page.evaluate(()=>({width:innerWidth,height:innerHeight,x:scrollX,y:scrollY}));assert.equal(viewportPng.pixelWidth,actualViewport.width);assert.equal(viewportPng.pixelHeight,actualViewport.height);log('actual-viewport-capture',{name,path:viewportTarget,sha256:viewportPng.sha256,sourceCommit:COMMIT,...actualViewport});
-    const target=path.join(CAPTURE,name+'.png');await page.screenshot({path:target,fullPage:true});const png=await pngMetadata(target);log('capture',{name,path:target,sha256:png.sha256,bytes:png.bytes,pixelWidth:png.pixelWidth,pixelHeight:png.pixelHeight,sourceCommit:COMMIT});
   } catch(error) {primaryError=error;throw error;} finally {
     let cleanupError;
     try {
@@ -206,31 +205,17 @@ async function geometry(page, label) {
 async function enlargeFonts(page) {
   return page.evaluate(async () => {
     await document.fonts.ready;
-    // Restore each original inline value before remeasuring. Sorting may replace
-    // result cards; their new nodes must be included without doubling old nodes twice.
-    if (window.__gtaResizeOriginals) {
-      for (const [element, original] of window.__gtaResizeOriginals) {
-        if (original.value) element.style.setProperty('font-size', original.value, original.priority);
-        else element.style.removeProperty('font-size');
-      }
-    }
-    window.__gtaResizeOriginals = new Map();
     const selectorFor=e=>{const parts=[];while(e&&e.nodeType===1){const parent=e.parentElement;parts.unshift(e.tagName.toLowerCase()+(parent?':nth-child('+([...parent.children].indexOf(e)+1)+')':''));e=parent;}return parts.join(' > ');};
     const snapshot=e=>({selector:selectorFor(e),text:e.textContent?.trim().slice(0,100),connected:e.isConnected,fontSize:getComputedStyle(e).fontSize,font:getComputedStyle(e).font,inlineFontSize:e.style.getPropertyValue('font-size'),inlinePriority:e.style.getPropertyPriority('font-size'),inlineStyle:e.getAttribute('style')});
     const rows = [...document.querySelectorAll('h1,h2,h3,h4,p,button,input,select,textarea,label,legend,summary,a,li,dt,dd,span')]
       .filter(e => !e.closest('svg,.gta-artwork,.sr-only,.oe-sr-only')).map(e => ({ e, before: parseFloat(getComputedStyle(e).fontSize), beforeState:snapshot(e) }));
-    for (const { e, before } of rows) {
-      window.__gtaResizeOriginals.set(e, {value:e.style.getPropertyValue('font-size'),priority:e.style.getPropertyPriority('font-size')});
-      e.style.setProperty('font-size', before * 2 + 'px', 'important');
-    }
-    const immediate=rows.map(({e})=>snapshot(e));
+    for (const { e, before } of rows) e.style.setProperty('font-size', before * 2 + 'px', 'important');
     const activeFontTransitionsBeforeSettle=document.getAnimations().filter(a=>a.effect?.getKeyframes().some(f=>typeof f.fontSize==='string')).length;
     const relevantAnimations=document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity && a.effect?.target instanceof Element && a.effect.target.checkVisibility({visibilityProperty:true,contentVisibilityAuto:true}));
     let settleTimer;try{await Promise.race([Promise.allSettled(relevantAnimations.map(a=>a.finished)),new Promise((_,reject)=>{settleTimer=setTimeout(()=>reject(new Error('Rendered finite animation did not settle within3000ms; visibility='+document.visibilityState+'; hasFocus='+document.hasFocus()+'; '+JSON.stringify(relevantAnimations.filter(a=>a.playState!=='finished').map(a=>({type:a.constructor.name,state:a.playState,properties:a.effect?.getKeyframes().map(f=>Object.keys(f)).flat()})).slice(0,5)))),3000);})]);}finally{clearTimeout(settleTimer);} 
     await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-    const diagnostics=rows.map(({e,before,beforeState},index)=>({before,beforeState,immediate:immediate[index],settled:snapshot(e)}));
     const samples = rows.filter(({e}) => e.getClientRects().length > 0 && e.checkVisibility({visibilityProperty:true,contentVisibilityAuto:true})).map(({e,before,beforeState}) => ({ element: e.tagName, className:e.className, selector:beforeState.selector, before, after: parseFloat(getComputedStyle(e).fontSize) }));
-    return { count: rows.length, samples, diagnostics, fontReadiness:document.fonts.status, actualTwoAnimationFramesWaited:true,activeFontTransitionsBeforeSettle,finiteAnimationsSettledBeforeMeasurement:true,documentVisibilityAtMeasurement:document.visibilityState,documentHasFocusAtMeasurement:document.hasFocus() };
+    return { count: rows.length, samples, fontReadiness:document.fonts.status, actualTwoAnimationFramesWaited:true,activeFontTransitionsBeforeSettle,finiteAnimationsSettledBeforeMeasurement:true,documentVisibilityAtMeasurement:document.visibilityState,documentHasFocusAtMeasurement:document.hasFocus() };
   });
 }
 async function savePreset(page, name) {
@@ -270,7 +255,7 @@ async function viewportSectionCapture(page,selector,name){
     const section=await page.locator(selector).evaluate(e=>{const r=e.getBoundingClientRect();return {top:r.top+scrollY,bottom:r.bottom+scrollY,left:r.left,right:r.right,documentHeight:document.documentElement.scrollHeight};});
     assert(section.left>=-2&&section.right<=before.width+2,'Section stays inside real viewport width');
     let requested=Math.max(0,section.top-24),lastY=-1;const frames=[];
-    for(let index=0;index<20;index++){
+    for(let index=0;index<40;index++){
       await page.evaluate(y=>window.scrollTo(0,y),requested);await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
       const state=await page.evaluate(()=>{const e=document.querySelector('.skip-link'),r=e?.getBoundingClientRect();return {x:scrollX,y:scrollY,width:innerWidth,height:innerHeight,activeElement:{tag:document.activeElement?.tagName,className:document.activeElement?.getAttribute('class')},skipLink:e?{focused:e.matches(':focus'),top:getComputedStyle(e).top,rect:{top:r.top,bottom:r.bottom,height:r.height}}:null};});
       assert.equal(state.width,before.width);assert.equal(state.height,before.height);assert(await page.evaluate(e=>document.activeElement===e,focused),'Real viewport capture preserves exact focus');assert(state.y>lastY,'Scroll frames must advance');lastY=state.y;
@@ -279,7 +264,7 @@ async function viewportSectionCapture(page,selector,name){
       if(state.y+state.height>=Math.min(section.documentHeight,section.bottom+24)){log('real-viewport-section-covered',{name,selector,section,frames:frames.length,overlapPixels:120,unchangedViewport:true,noStitchingOrEditing:true});return;}
       requested=Math.min(section.documentHeight-state.height,state.y+state.height-120);
     }
-    throw new Error('Section coverage exceeded bounded20 real viewport frames');
+    throw new Error('Section coverage exceeded bounded40 real viewport frames');
   } catch(error){primaryError=error;throw error;} finally {
     let cleanupError;
     try {await page.evaluate(({x,y})=>window.scrollTo(x,y),before);assert(await page.evaluate(e=>document.activeElement===e,focused));const restored=await page.evaluate(()=>({x:scrollX,y:scrollY}));assert.equal(restored.x,before.x);assert.equal(restored.y,before.y);log('real-viewport-section-restored',{name,restored});}catch(error){cleanupError=error;log('viewport-section-cleanup-error',{name,message:error.message,primaryError:primaryError?.message??null});}
@@ -382,25 +367,28 @@ async function main(){
     assert(await community.evaluate(e=>e.getBoundingClientRect().top<document.querySelector('.scoped-saved-filters').getBoundingClientRect().top),'Community focus appears before saved filters and support');
     await page.locator('.language-tool select').selectOption('ar');await page.waitForFunction(()=>document.documentElement.lang==='ar'&&document.documentElement.dir==='rtl');await idleResults(page);
     await geometry(page,`${surface}-${mode}-320-rtl`);await capture(page,`${surface}-${mode}-320-rtl`);await viewportSectionCapture(page,'.oe-community-filters',`${surface}-${mode}-320-rtl-community`);
+    // Exercise real sort changes before reloading to obtain a pristine baseline.
+    const initialSort=page.locator('#oe-sort');
+    for(const value of await initialSort.locator('option').evaluateAll(options=>options.map(option=>option.value))){await initialSort.selectOption(value);await idleResults(page);assert.equal(await initialSort.inputValue(),value);}
+    await actualListReady(page);
+    if(await page.locator('.language-tool select').inputValue()!=='ar')await page.locator('.language-tool select').selectOption('ar');
+    await page.waitForFunction(()=>document.documentElement.lang==='ar'&&document.documentElement.dir==='rtl');await idleResults(page);
+    const sort=page.locator('#oe-sort');await sort.selectOption('relevance');await idleResults(page);
+    const baseline=await page.evaluate(()=>Object.fromEntries(['.oe-eyebrow','.oe-directory-end p','.oe-card h3','.oe-card .oe-summary'].map(selector=>{const e=document.querySelector(selector),css=getComputedStyle(e);return [selector,{fontSize:parseFloat(css.fontSize),lineHeight:parseFloat(css.lineHeight)}];})));
+    assert.equal(baseline['.oe-eyebrow'].fontSize,12);assert.equal(baseline['.oe-directory-end p'].fontSize,13);assert(Math.abs(baseline['.oe-directory-end p'].lineHeight-23.4)<0.1);assert.equal(baseline['.oe-card h3'].fontSize,25);assert.equal(baseline['.oe-card .oe-summary'].fontSize,15);
     const enlarged=await enlargeFonts(page);for(const row of enlarged.samples)assert(Math.abs(row.after/row.before-2)<0.01);
-    const sort=page.locator('#oe-sort');
-    for(const value of await sort.locator('option').evaluateAll(options=>options.map(option=>option.value))){
-      await sort.selectOption(value);await idleResults(page);
-      const fit=await sort.evaluate(element=>{const css=getComputedStyle(element),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');ctx.font=css.font;const label=element.selectedOptions[0].textContent.trim(),textWidth=ctx.measureText(label).width;return {label,textWidth,available:element.clientWidth-parseFloat(css.paddingLeft)-parseFloat(css.paddingRight),arrowAllowance:Math.max(24,parseFloat(css.fontSize)*1.2)};});
-      assert(fit.available>=fit.textWidth+fit.arrowAllowance,`Sort option clips at 200%: ${JSON.stringify(fit)}`);
-    }
-    await sort.selectOption('relevance');await idleResults(page);
-    const refreshed=await enlargeFonts(page);
-    for(const row of refreshed.samples)assert(Math.abs(row.after/row.before-2)<0.01,'Current rendered text must be twice its own baseline');
-    const cardTitles=refreshed.samples.filter(row=>row.selector.includes('article') && row.element==='H3');
-    const cardDescriptions=refreshed.samples.filter(row=>row.selector.includes('article') && row.element==='P' && row.className.split(/\s+/).includes('oe-summary'));
-    assert(cardTitles.length>0&&cardDescriptions.length>0,'Current result card titles and descriptions must be measured after sorting');
-    log('post-sort-font200',{renderedSamples:refreshed.samples.length,cardTitles:cardTitles.length,cardDescriptions:cardDescriptions.length,allComputedDoubled:true});
+    const cardTitles=enlarged.samples.filter(row=>row.selector.includes('article') && row.element==='H3');
+    const cardDescriptions=enlarged.samples.filter(row=>row.selector.includes('article') && row.element==='P' && row.className.split(/\s+/).includes('oe-summary'));
+    assert(cardTitles.length>0&&cardDescriptions.length>0,'Current result card titles and descriptions must be measured');
+    const finalDirectory=await page.locator('.oe-directory-end p').first().evaluate(e=>({fontSize:parseFloat(getComputedStyle(e).fontSize),lineHeight:parseFloat(getComputedStyle(e).lineHeight)}));assert.equal(finalDirectory.fontSize,26);assert(Math.abs(finalDirectory.lineHeight-46.8)<0.1);
+    const fits=await sort.evaluate(element=>{const css=getComputedStyle(element),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');ctx.font=css.font;return [...element.options].map(option=>({label:option.textContent.trim(),textWidth:ctx.measureText(option.textContent.trim()).width,available:element.clientWidth-parseFloat(css.paddingLeft)-parseFloat(css.paddingRight),arrowAllowance:Math.max(24,parseFloat(css.fontSize)*1.2)}));});
+    for(const fit of fits)assert(fit.available>=fit.textWidth+fit.arrowAllowance,`Sort option clips at 200%: ${JSON.stringify(fit)}`);
+    log('clean-font200',{baseline,finalDirectory,renderedSamples:enlarged.samples.length,cardTitles:cardTitles.length,cardDescriptions:cardDescriptions.length,allComputedDoubled:true});
     await viewportSectionCapture(page,'.oe-result-toolbar',`${surface}-${mode}-320-rtl-font200-sort`);
-    await geometry(page,`${surface}-${mode}-320-rtl-font200`);await capture(page,`${surface}-${mode}-320-rtl-font200`);await viewportSectionCapture(page,'.oe-filters',`${surface}-${mode}-320-rtl-font200-filters`);await axe(page,`${surface}-${mode}-320-rtl-font200`);
+    await geometry(page,`${surface}-${mode}-320-rtl-font200`);await capture(page,`${surface}-${mode}-320-rtl-font200`);await viewportSectionCapture(page,'.oe-filters',`${surface}-${mode}-320-rtl-font200-filters`);await viewportSectionCapture(page,'.oe-card-grid',`${surface}-${mode}-320-rtl-font200-cards`);await viewportSectionCapture(page,'.oe-directory-end',`${surface}-${mode}-320-rtl-font200-directory`);await axe(page,`${surface}-${mode}-320-rtl-font200`);
     await page.locator('.language-tool select').selectOption('en');await page.waitForFunction(()=>document.documentElement.lang==='en');
   });
   await footerReachable(page,`${surface}-${mode}-footer-real`);
   const final=await(await context.request.get(BASE+'/hosting-release.json')).json();assert.equal(final.sourceCommit,COMMIT);assert.equal(final.nativeFeedSha256,NATIVE);assert.deepEqual(globalPageErrors,[]);fs.writeFileSync(path.join(CAPTURE,'mandatory-visual-reviews.json'),JSON.stringify({sourceCommit:COMMIT,surface,mode,visualAcceptance:false,pendingVisualReviews},null,2));log('C-SCENE-COMPLETE',{surface,mode,passedCases:passed.length,sourceCommit:COMMIT,humanVisualReviewComplete:false,visualAcceptance:false,mapCoverageClaim:false});await context.close();
 }
-main().catch(async error=>{log('FIRST-FAILURE',{surface,mode,message:error.message,stack:error.stack,passedCases:passed});if(activePage&&!activePage.isClosed()){for(const fullPage of [false,true]){try{const name=fullPage?'FAILURE-fullpage':'FAILURE-viewport',target=path.join(CAPTURE,name+'.png');await activePage.screenshot({path:target,fullPage});const png=await pngMetadata(target);log('failure-capture',{name,path:target,sha256:png.sha256,pixelWidth:png.pixelWidth,pixelHeight:png.pixelHeight});}catch(e){log('failure-capture-error',{message:e.message});}}}process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();});
+main().catch(async error=>{log('FIRST-FAILURE',{surface,mode,message:error.message,stack:error.stack,passedCases:passed});if(activePage&&!activePage.isClosed()){for(const fullPage of [false]){try{const name=fullPage?'FAILURE-fullpage':'FAILURE-viewport',target=path.join(CAPTURE,name+'.png');await activePage.screenshot({path:target,fullPage});const png=await pngMetadata(target);log('failure-capture',{name,path:target,sha256:png.sha256,pixelWidth:png.pixelWidth,pixelHeight:png.pixelHeight});}catch(e){log('failure-capture-error',{message:e.message});}}}process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();});
