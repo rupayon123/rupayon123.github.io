@@ -5,7 +5,7 @@
       "browse",
       "light"
     ],
-    "scope": "Standalone Browse-light RTL at verified 200%; saved-filter interactions use prior receipt",
+    "scope": "Standalone Browse-light original provider copy and RTL at verified 200%; other scenes unrun",
     "family": "RTL",
     "completionEvent": "C-SCENE-COMPLETE",
     "sourceCase": "browse-light immutable preview",
@@ -13,6 +13,6 @@
       "browse-light actual RTL filter reflow"
     ],
     "viewportSection": null,
-    "scriptSHA256": "23d0ad122b1a690d59181250adb72858949423a3e99078a2bb65880e5395c8e0"
+    "scriptSHA256": "e275660513822659151d98187ba1151c3d290463cab16de26cde9799d18a040c"
   }
 }

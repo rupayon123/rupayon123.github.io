@@ -72,6 +72,7 @@ if receipt['passed']:
  elif SCENE['family']=='RTL':
   assert cases_completed==1 and source_checks_completed==1 and completion[0]['passedCases']==2
   assert completion[0]['surface']==SCENE['args'][0] and completion[0]['mode']==SCENE['args'][1]
+  assert len([e for e in events if e.get('event')=='original-provider-copy-preserved' and e.get('sameCard') and e.get('modal') and e.get('translationUnavailable')])==1
   assert len([e for e in events if e.get('event')=='clean-font200' and e.get('allComputedDoubled') and e.get('cardTitles',0)>0 and e.get('cardDescriptions',0)>0])==1
   required=['-320-rtl-font200-sort','-320-rtl-font200-filters','-320-rtl-font200-cards','-320-rtl-font200-directory']
   names={e['name'] for e in coverage}

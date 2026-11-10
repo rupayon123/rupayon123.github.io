@@ -345,7 +345,17 @@ async function main(){
     assert.equal(await community.locator('input[type=checkbox]').count(),3);
     assert.equal(await community.evaluate(e=>!!e.closest('details')),false,'Community focus is directly visible, outside More filters');
     assert(await community.evaluate(e=>e.getBoundingClientRect().top<document.querySelector('.scoped-saved-filters').getBoundingClientRect().top),'Community focus appears before saved filters and support');
+    const initialCard=page.locator('.oe-card').first();await initialCard.locator('.oe-summary').waitFor();
+    const originalTitle=(await initialCard.locator('h3').innerText()).trim(),originalExcerpt=(await initialCard.locator('.oe-summary').innerText()).trim();
+    assert(originalTitle&&originalExcerpt.length>30,'Actual provider text must be present before locale change');
     await page.locator('.language-tool select').selectOption('ar');await page.waitForFunction(()=>document.documentElement.lang==='ar'&&document.documentElement.dir==='rtl');await idleResults(page);
+    const sameCard=page.locator('.oe-card').first();assert.equal((await sameCard.locator('h3').innerText()).trim(),originalTitle);assert.equal((await sameCard.locator('.oe-summary').innerText()).trim(),originalExcerpt,'Locale change must preserve the real provider excerpt');
+    assert.equal(await sameCard.locator('.oe-summary').getAttribute('lang'),'');assert.match(await sameCard.locator('.oe-original-note').innerText(),/Original provider description; translation unavailable/);
+    await sameCard.locator('h3 button').click();const details=page.locator('dialog.oe-detail[open]');await details.waitFor();
+    const modalExcerpt=(await details.locator('.oe-detail-summary').innerText()).trim();assert(modalExcerpt.startsWith(originalExcerpt.slice(0,30)),'Modal must show the same real provider description');
+    assert.equal(await details.locator('.oe-detail-summary').getAttribute('lang'),'');assert.match(await details.innerText(),/Translation is not available yet/);assert.doesNotMatch(await details.innerText(),/summary translated for browsing/i);
+    assert((await details.locator('.oe-detail-description-links a').count())>=1,'Full description link remains available');await page.getByRole('button',{name:'Close opportunity details',exact:true}).click();
+    log('original-provider-copy-preserved',{sameCard:true,modal:true,translationUnavailable:true});
     await geometry(page,`${surface}-${mode}-320-rtl`);await capture(page,`${surface}-${mode}-320-rtl`);await viewportSectionCapture(page,'.oe-community-filters',`${surface}-${mode}-320-rtl-community`);
     // Exercise real sort changes on an unscaled fresh page before the sole enlargement.
     const initialSort=page.locator('#oe-sort');
