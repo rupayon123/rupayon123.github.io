@@ -1,0 +1,510 @@
+diff --git a/components/AccessibilityFilter.tsx b/components/AccessibilityFilter.tsx
+index d33c929..e04b4c7 100644
+--- a/components/AccessibilityFilter.tsx
++++ b/components/AccessibilityFilter.tsx
+@@ -3,20 +3,30 @@
+ import { useId } from "react";
+ import { accessibilitySupportCategories } from "@/lib/accessibilitySupport";
+ import { supportCategoryHelp, supportCategoryLabels, type AccessibilitySelection } from "@/lib/accessibilitySelection";
++import { nativeUi, type NativeUiKey } from "@/lib/nativeUi";
++import type { LanguageCode } from "@/lib/types";
++
++const translatedLabels: Partial<Record<keyof typeof supportCategoryLabels, NativeUiKey>> = {
++  "adapted-inclusive-programme": "supportAdapted",
++  "sign-language": "supportSignLanguage",
++  "hearing-captioning": "supportCaptions",
++  "visual-formats": "supportVisualFormats",
++  "support-person": "supportPerson",
++};
+ 
+ /** Shown only behind the default-off reviewed integration flag. */
+-export function AccessibilityFilter({ value, onChange, disabled = false }: {
+-  value: AccessibilitySelection; onChange: (value: AccessibilitySelection) => void; disabled?: boolean;
++export function AccessibilityFilter({ value, onChange, disabled = false, language = "en" }: {
++  value: AccessibilitySelection; onChange: (value: AccessibilitySelection) => void; disabled?: boolean; language?: LanguageCode;
+ }) {
+   const id = useId();
+   return <fieldset className="accessibility-filter" disabled={disabled} lang="en" aria-describedby={`${id}-help`}>
+     <legend>Special needs &amp; accessibility</legend>
+-    <p id={`${id}-help`}>Choose the access or support you want to check. Providers confirm arrangements. Listings must match every selected category.</p>
++    <p id={`${id}-help`} lang={language}>{nativeUi(language, "accessibilitySupportExplanation")}</p>
+     {accessibilitySupportCategories.map(category => <div key={category}>
+-      <label className="accessibility-check"><input type="checkbox" checked={value.categories.includes(category)} aria-describedby={supportCategoryHelp[category] ? `${id}-${category}` : undefined} onChange={e => onChange({ ...value, categories: accessibilitySupportCategories.filter(c => c === category ? e.target.checked : value.categories.includes(c)) })} /><span>{supportCategoryLabels[category]}</span></label>
++      <label className="accessibility-check"><input type="checkbox" checked={value.categories.includes(category)} aria-describedby={supportCategoryHelp[category] ? `${id}-${category}` : undefined} onChange={e => onChange({ ...value, categories: accessibilitySupportCategories.filter(c => c === category ? e.target.checked : value.categories.includes(c)) })} /><span lang={translatedLabels[category] ? language : "en"}>{translatedLabels[category] ? nativeUi(language, translatedLabels[category]!) : supportCategoryLabels[category]}</span></label>
+       {supportCategoryHelp[category] && <p id={`${id}-${category}`} className="accessibility-check-help">{supportCategoryHelp[category]}</p>}
+     </div>)}
+-    <label className="accessibility-check"><input type="checkbox" checked={value.includeOnRequest} onChange={e => onChange({ ...value, includeOnRequest: e.target.checked })} /><span>Include support that must be requested</span></label>
++    <label className="accessibility-check"><input type="checkbox" checked={value.includeOnRequest} onChange={e => onChange({ ...value, includeOnRequest: e.target.checked })} /><span lang={language}>{nativeUi(language, "supportIncludeRequests")}</span></label>
+     <p>Request-based matches still need provider confirmation. Building access does not confirm adapted activities or support staff.</p>
+   </fieldset>;
+ }
+diff --git a/components/OpportunityExplorer.css b/components/OpportunityExplorer.css
+index ab71c8e..1f07f22 100644
+--- a/components/OpportunityExplorer.css
++++ b/components/OpportunityExplorer.css
+@@ -319,7 +319,9 @@
+   .oe-summary { font-size: 15px; }
+   .oe-card-facts li { font-size: 14px; }
+   .oe-result-toolbar > p { font-size: 14px; }
+-  .oe-sort select { font-size: 13px; max-width: 145px; }
++  .oe-result-actions { flex-wrap: wrap; width: 100%; }
++  .oe-sort { flex: 1 1 100%; min-width: 0; }
++  .oe-sort select { font-size: 13px; width: 100%; max-width: none; }
+   .oe-view-toggle button span { display: none; }
+   .oe-view-toggle button { min-width: 44px; }
+   .oe-active-filters button { font-size: 12px; }
+diff --git a/components/OpportunityExplorer.tsx b/components/OpportunityExplorer.tsx
+index a988d51..ccfcba7 100644
+--- a/components/OpportunityExplorer.tsx
++++ b/components/OpportunityExplorer.tsx
+@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+ import { ArrowDown, ArrowRight, Bookmark, CalendarDays, CalendarPlus, Check, ChevronDown, Code2, Compass, ExternalLink, FlaskConical, List, LocateFixed, Map, MapPin, Search, SlidersHorizontal, RefreshCw, UsersRound, X } from "lucide-react";
+ import { categories, cityOptions, opportunities, regions } from "@/lib/data";
+ import { t, translatedCategory, translatedSummary } from "@/lib/i18n";
++import { nativeUi } from "@/lib/nativeUi";
+ import { readSavedFilters, saveNamedFilter, deleteNamedFilter, SAVED_FILTERS_CHANGED, type SavedFilter } from "@/lib/savedFilters";
+ import { DEFAULT_FILTERS, filtersFromUrl, URL_TOGGLES } from "@/lib/explorerFilters";
+ import { legalConfig } from "@/lib/legal";
+@@ -395,13 +396,13 @@ export function OpportunityExplorer({ supportPresetsEnabled = false, language, i
+         </aside> : <aside id="oe-filters" className={`oe-filters${filterOpen ? " oe-filters-open" : ""}`} aria-label={t(language, "filters")}>
+           <div className="oe-filter-heading"><h3>{t(language, "filters")}</h3><button data-science-press type="button" onClick={clearFilters}>{t(language, "clearFilters")}</button></div>
+           <fieldset className="oe-community-filters"><legend>{t(language, "equity")}</legend>{toggles.slice(0, 3).map(([key, label]) => <label key={key} className="oe-check"><input type="checkbox" checked={filters[key]} onChange={(event) => updateFilter(key, event.target.checked)} /><span>{t(language, label)}</span></label>)}</fieldset>
+-          {supportPresetsEnabled ? <><ScopedSavedFilters {...scoped} /><AccessibilityFilter value={support} onChange={setSupport} />{supportError && <p role="alert" lang="en">{supportError}</p>}<button type="button" className="soft-button oe-clear-support" onClick={clearSupport} lang="en">Clear support filters</button></> : <>
++          {supportPresetsEnabled ? <><ScopedSavedFilters {...scoped} language={language} /><AccessibilityFilter value={support} onChange={setSupport} language={language} />{supportError && <p role="alert" lang="en">{supportError}</p>}<button type="button" className="soft-button oe-clear-support" onClick={clearSupport} lang="en">Clear support filters</button></> : <>
+           <section className="oe-named-filters" aria-labelledby="saved-filter-heading" lang="en">
+-            <h4 id="saved-filter-heading"><GtaArtwork role="saved" />Saved filters</h4>
+-            <div className="oe-field"><label htmlFor="saved-filter-picker">Choose a saved filter</label><select id="saved-filter-picker" value={selectedFilterId} onChange={event => applyPreset(event.target.value)}><option value="">New filter</option>{namedFilters.filter(item => item.highSchool === highSchool).map(item => <option value={item.id} key={item.id}>{item.name}</option>)}</select></div>
++            <h4 id="saved-filter-heading" lang={language}><GtaArtwork role="saved" />{nativeUi(language, "mySavedSearches")}</h4>
++            <div className="oe-field"><label htmlFor="saved-filter-picker">Choose a saved filter</label><select id="saved-filter-picker" value={selectedFilterId} onChange={event => applyPreset(event.target.value)}><option value="" lang={language}>{nativeUi(language, "newFilter")}</option>{namedFilters.filter(item => item.highSchool === highSchool).map(item => <option value={item.id} key={item.id}>{item.name}</option>)}</select></div>
+             {presetDirty && <p className="oe-preset-status">Unsaved changes</p>}
+             <div className="oe-field"><label htmlFor="saved-filter-name">Filter name</label><input id="saved-filter-name" value={filterName} onChange={event => { setFilterName(event.target.value); setFilterNotice(""); }} maxLength={80} placeholder="e.g. Saturday science" /></div>
+-            <div className="oe-preset-actions"><button type="button" data-science-press onClick={persistPreset} disabled={!filterName.trim() || !!filterStorageError}>{selectedFilterId ? "Update filter" : "Save filter"}</button>{selectedFilterId && <><button type="button" onClick={detachPreset}>New filter</button><button type="button" onClick={removePreset}>Delete filter</button></>}</div>
++            <div className="oe-preset-actions"><button type="button" data-science-press onClick={persistPreset} disabled={!filterName.trim() || !!filterStorageError}><span lang={language}>{nativeUi(language, selectedFilterId ? "updateSearch" : "saveSearch")}</span></button>{selectedFilterId && <><button type="button" onClick={detachPreset} lang={language}>{nativeUi(language, "newFilter")}</button><button type="button" onClick={removePreset} lang={language}>{nativeUi(language, "deleteSavedSearch")}</button></>}</div>
+             <p className="oe-preset-help">Stored only in this browser. Choosing a filter applies it immediately. Edits are saved only with Save or Update.</p>
+             {filterNotice && <p className="oe-preset-status" role="status">{filterNotice}</p>}
+             {filterStorageError && <p className="oe-preset-status" role="alert">{filterStorageError}</p>}
+@@ -423,7 +424,7 @@ export function OpportunityExplorer({ supportPresetsEnabled = false, language, i
+           {landing && <div className="oe-landing-results-heading" lang="en"><h3>Opportunities to explore</h3><a href={browseHref}>Browse all<ArrowRight size={17} aria-hidden="true" /></a></div>}
+           {supportPresetsEnabled && support.categories.length > 0 && <div className="accessibility-results-note" lang="en"><p>{support.includeOnRequest ? "Request-based matches need provider confirmation. Review the conditions in each listing." : "Only reviewed statements confirming every selected support are included."}</p>{!results.length && <p>No reviewed listings confirm all these supports.</p>}<button className="soft-button" type="button" onClick={clearSupport}>Clear support filters</button><button className="soft-button" type="button" aria-expanded={showUnconfirmed} onClick={() => setShowUnconfirmed(v => !v)}>{showUnconfirmed ? "Hide" : "Show"} listings with unconfirmed support ({unconfirmedResults.length})</button></div>}
+           {chips.length > 0 && <div className="oe-active-filters" role="group" aria-label={t(language, "filters")}>{chips.map((chip) => <button data-science-press type="button" key={chip.key} lang={chip.key.startsWith("support-") ? "en" : undefined} onClick={chip.reset} aria-label={`${t(language, "clearFilters")}: ${chip.label}`}>{chip.label}<X size={14} aria-hidden="true" /></button>)}<button data-science-press className="oe-clear-all" type="button" onClick={clearFilters}>{t(language, "clearFilters")}</button></div>}
+-          <div className="oe-result-toolbar"><p role="status" aria-live="polite" aria-atomic="true" lang={!now ? "en" : language}>{!now || resultsPending ? "Finding opportunities…" : searchError ? "Search is unavailable" : <><strong>{results.length}</strong> {t(language, "results")}</>}</p><div className="oe-result-actions"><div className="oe-sort" lang="en"><label className="oe-sr-only" htmlFor="oe-sort">Sort opportunities</label><select id="oe-sort" value={sort} onChange={(event) => setSort(event.target.value as SortOrder)}><option value="relevance">Best match</option><option value="soonest">Starting soon</option><option value="recent">Recently checked</option><option value="title">A to Z</option>{location && <option value="distance">Nearest first</option>}</select></div>{!landing && <div className="oe-view-toggle" role="group" aria-label={t(language, "viewMode")}><button data-science-press type="button" aria-pressed={view === "list"} aria-label={t(language, "list")} onClick={() => setView("list")}><List size={18} aria-hidden="true" /><span>{t(language, "list")}</span></button><button data-science-press type="button" aria-pressed={view === "map"} aria-label={t(language, "map")} onClick={() => setView("map")}><Map size={18} aria-hidden="true" /><span>{t(language, "map")}</span></button></div>}</div></div>
++          <div className="oe-result-toolbar"><p role="status" aria-live="polite" aria-atomic="true" lang={!now ? "en" : language}>{!now || resultsPending ? "Finding opportunities…" : searchError ? "Search is unavailable" : <><strong>{results.length}</strong> {t(language, "results")}</>}</p><div className="oe-result-actions"><div className="oe-sort" lang="en"><label className="oe-sr-only" htmlFor="oe-sort">Sort opportunities</label><select id="oe-sort" value={sort} onChange={(event) => setSort(event.target.value as SortOrder)}><option value="relevance" lang={language}>{nativeUi(language, "sortBestMatch")}</option><option value="soonest">Starting soon</option><option value="recent">Recently checked</option><option value="title">A to Z</option>{location && <option value="distance">Nearest first</option>}</select></div>{!landing && <div className="oe-view-toggle" role="group" aria-label={t(language, "viewMode")}><button data-science-press type="button" aria-pressed={view === "list"} aria-label={t(language, "list")} onClick={() => setView("list")}><List size={18} aria-hidden="true" /><span>{t(language, "list")}</span></button><button data-science-press type="button" aria-pressed={view === "map"} aria-label={t(language, "map")} onClick={() => setView("map")}><Map size={18} aria-hidden="true" /><span>{t(language, "map")}</span></button></div>}</div></div>
+           <div className="oe-source-status" lang="en"><div className={`oe-feedback-slot${saveFeedback && !selected ? " is-active" : ""}`}><p className="oe-source-meta" aria-hidden={saveFeedback && !selected ? true : undefined}>{!now ? "Loading the published snapshot…" : available.length > 0 ? <>{available.length} published listings · {coverage}<br />Last source check: <bdi lang={language} dir="auto">{shortDate(latestCheck, language)}</bdi>.</> : "No current listings in this published snapshot."}</p>{saveFeedback && !selected && <div key={saveFeedback.sequence} className="oe-save-feedback" aria-hidden="true" lang="en" dir="auto"><Check size={20} /><span>{saveFeedback.text}</span></div>}</div><button data-science-press type="button" onClick={() => window.location.reload()} title="Reload this page for the latest published listings."><RefreshCw size={14} aria-hidden="true" />Refresh listings</button></div>
+           {storageNotice && <p className="oe-inline-notice" role="status" lang="en">{storageNotice}</p>}
+           {now && !resultsPending && !searchError && results.length === 0 && filters.query.trim() && <div className="oe-search-options" lang="en" dir="ltr"><button data-science-press type="button" className="oe-secondary" onClick={() => updateFilter("query", "")}>Clear search, keep filters</button><a href="/programs/">Browse the program directory</a><a href="/programs/#provider-calendars">Explore more provider calendars</a></div>}
+diff --git a/components/ScopedSavedFilters.tsx b/components/ScopedSavedFilters.tsx
+index 972f195..7605e0f 100644
+--- a/components/ScopedSavedFilters.tsx
++++ b/components/ScopedSavedFilters.tsx
+@@ -3,6 +3,8 @@
+ import { useId } from "react";
+ import type { PresetScope, ScopedPreset } from "@/lib/scopedPresets/repository";
+ import { GtaArtwork } from "./GtaArtwork";
++import { nativeUi } from "@/lib/nativeUi";
++import type { LanguageCode } from "@/lib/types";
+ 
+ const scopes: { id: PresetScope; label: string }[] = [
+   { id: "browse", label: "Browse" },
+@@ -10,6 +12,7 @@ const scopes: { id: PresetScope; label: string }[] = [
+   { id: "youth-guide", label: "Student guide" }
+ ];
+ type Props = {
++  language?: LanguageCode;
+   presets: readonly ScopedPreset<unknown>[];
+   selectedId: string;
+   name: string;
+@@ -31,15 +34,16 @@ type Props = {
+ /** Single picker mounted behind the default-off integration flag; runtime and
+  * visual acceptance are required before public activation. */
+ export function ScopedSavedFilters(props: Props) {
++  const language = props.language ?? "en";
+   const id = useId();
+   const selected = props.presets.find(p => p.id === props.selectedId);
+   const helpId = `${id}-help`;
+   const blocked = props.loading || props.busy;
+   return <fieldset className="scoped-saved-filters" lang="en" disabled={blocked} aria-busy={blocked}>
+-    <legend><GtaArtwork role="saved" />Saved filters</legend>
++    <legend lang={language}><GtaArtwork role="saved" />{nativeUi(language, "mySavedSearches")}</legend>
+     <label htmlFor={`${id}-picker`}>Choose a saved filter</label>
+     <select id={`${id}-picker`} value={props.selectedId} onChange={e => props.onSelect(e.target.value)} aria-describedby={helpId}>
+-      <option value="">New filter</option>
++      <option value="" lang={language}>{nativeUi(language, "newFilter")}</option>
+       {scopes.map(scope => {
+         const entries = props.presets.filter(p => p.scope === scope.id);
+         return entries.length ? <optgroup label={scope.label} key={scope.id}>{entries.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</optgroup> : null;
+@@ -50,8 +54,8 @@ export function ScopedSavedFilters(props: Props) {
+     <label htmlFor={`${id}-name`}>Filter name</label>
+     <input id={`${id}-name`} value={props.name} maxLength={80} onChange={e => props.onNameChange(e.target.value)} autoComplete="off" />
+     <div className="scoped-preset-actions">
+-      <button className="soft-button" type="button" onClick={props.onSave} disabled={props.writeBlocked || !props.name.trim()}>{props.busy ? "Working…" : selected ? "Update filter" : "Save filter"}</button>
+-      {selected && <button className="soft-button" type="button" onClick={props.onDelete} disabled={props.writeBlocked}>Delete filter</button>}
++      <button className="soft-button" type="button" onClick={props.onSave} disabled={props.writeBlocked || !props.name.trim()} lang={props.busy ? "en" : language}>{props.busy ? "Working…" : nativeUi(language, selected ? "updateSearch" : "saveSearch")}</button>
++      {selected && <button className="soft-button" type="button" onClick={props.onDelete} disabled={props.writeBlocked} lang={language}>{nativeUi(language, "deleteSavedSearch")}</button>}
+     </div>
+     <p id={helpId}>Stored only in this browser. Choosing a filter applies it immediately. Edits are saved only with Save or Update. Choose New filter to start another.</p>
+     {props.legacyChanged && <div className="scoped-preset-recovery"><p role="alert">An older tab changed your previous saved filters. Your current filters and draft are kept. Close that tab before continuing.</p><p>Keep the current filters and preserve a backup of the older tab’s changes?</p><button className="soft-button" type="button" onClick={props.onKeepCurrent}>Keep current saved filters</button></div>}
+diff --git a/lib/i18n.ts b/lib/i18n.ts
+index 5fc6f40..baebe94 100644
+--- a/lib/i18n.ts
++++ b/lib/i18n.ts
+@@ -1,4 +1,5 @@
+ import type { Category, LanguageCode, Opportunity } from "./types";
++import { nativeUi } from "./nativeUi";
+ 
+ export const languageMeta: Record<
+   LanguageCode,
+@@ -2903,6 +2904,7 @@ const fullDescriptionLabels: Record<LanguageCode, string> = {
+ };
+ 
+ export function t(language: LanguageCode, key: UiKey) {
++  if (key === "black" || key === "girls" || key === "indigenous") return nativeUi(language, key);
+   if (key === "readFullDescription") return fullDescriptionLabels[language];
+   if (key === "searchPlaceholder" || key === "allCategories") return catalogUi[language][key];
+   return supplementalUi[language][key] ?? ui[language][key] ?? supplementalUi.en[key] ?? ui.en[key] ?? key;
+diff --git a/lib/nativeUi.ts b/lib/nativeUi.ts
+new file mode 100644
+index 0000000..b73d464
+--- /dev/null
++++ b/lib/nativeUi.ts
+@@ -0,0 +1,9 @@
++import strings from "./nativeUiStrings.json";
++import type { LanguageCode } from "./types";
++
++// Exact matching UI strings from the iOS release source c7893f8d7352df8ea818fcdec89bbc219c52672f.
++// Other website copy remains explicitly English until a matching translation is available.
++export type NativeUiKey = keyof typeof strings.en;
++export function nativeUi(language: LanguageCode, key: NativeUiKey): string {
++  return strings[language][key];
++}
+diff --git a/lib/nativeUiStrings.json b/lib/nativeUiStrings.json
+new file mode 100644
+index 0000000..1ffcf07
+--- /dev/null
++++ b/lib/nativeUiStrings.json
+@@ -0,0 +1,326 @@
++{
++  "en": {
++    "black": "Black-focused",
++    "girls": "Girls/women-focused",
++    "indigenous": "Indigenous-focused",
++    "sortBestMatch": "Best match",
++    "mySavedSearches": "Saved filters",
++    "deleteSavedSearch": "Delete filter",
++    "saveSearch": "Save filter",
++    "updateSearch": "Update filter",
++    "newFilter": "New filter",
++    "supportAdapted": "Adapted and inclusive programmes",
++    "supportSignLanguage": "Sign-language interpretation",
++    "supportCaptions": "Hearing support and captions",
++    "supportVisualFormats": "Accessible visual formats",
++    "supportPerson": "Support-person arrangements",
++    "supportIncludeRequests": "Include support that must be requested",
++    "accessibilitySupportExplanation": "Only provider-listed supports checked within 30 days. Every selected option must match. Unlisted support is unknown; ask the provider."
++  },
++  "fr": {
++    "black": "Centre sur les communautes noires",
++    "girls": "Centre sur filles/femmes",
++    "indigenous": "Centre sur les peuples autochtones",
++    "sortBestMatch": "Meilleur choix",
++    "mySavedSearches": "Filtres enregistrés",
++    "deleteSavedSearch": "Supprimer le filtre",
++    "saveSearch": "Enregistrer le filtre",
++    "updateSearch": "Mettre à jour le filtre",
++    "newFilter": "Nouveau filtre",
++    "supportAdapted": "Programmes adaptés et inclusifs",
++    "supportSignLanguage": "Interprétation en langue des signes",
++    "supportCaptions": "Aides auditives et sous-titrage",
++    "supportVisualFormats": "Formats visuels accessibles",
++    "supportPerson": "Modalités pour une personne de soutien",
++    "supportIncludeRequests": "Inclure les aides à demander",
++    "accessibilitySupportExplanation": "Seulement les aides indiquées par le prestataire et vérifiées depuis moins de 30 jours. Toutes les options choisies doivent correspondre. Une aide non indiquée est inconnue ; contactez le prestataire."
++  },
++  "zh": {
++    "black": "面向黑人社区",
++    "girls": "面向女孩/女性",
++    "indigenous": "面向原住民",
++    "sortBestMatch": "最佳匹配",
++    "mySavedSearches": "已保存的筛选",
++    "deleteSavedSearch": "删除筛选",
++    "saveSearch": "保存筛选",
++    "updateSearch": "更新筛选",
++    "newFilter": "新筛选条件",
++    "supportAdapted": "适应性与融合活动",
++    "supportSignLanguage": "手语翻译",
++    "supportCaptions": "听力支持与字幕",
++    "supportVisualFormats": "无障碍视觉格式",
++    "supportPerson": "陪同支持人员安排",
++    "supportIncludeRequests": "包括需要申请的支持",
++    "accessibilitySupportExplanation": "仅显示服务方列出且在30天内核查的支持。必须符合所有所选条件。未列出的支持情况未知，请向服务方咨询。"
++  },
++  "yue": {
++    "black": "黑人社區重點",
++    "girls": "女孩/女性重點",
++    "indigenous": "原住民重點",
++    "sortBestMatch": "最啱",
++    "mySavedSearches": "已儲存嘅篩選",
++    "deleteSavedSearch": "刪除篩選",
++    "saveSearch": "儲存篩選",
++    "updateSearch": "更新篩選",
++    "newFilter": "新篩選條件",
++    "supportAdapted": "適應性同共融活動",
++    "supportSignLanguage": "手語傳譯",
++    "supportCaptions": "聽力支援同字幕",
++    "supportVisualFormats": "無障礙視覺格式",
++    "supportPerson": "支援人員安排",
++    "supportIncludeRequests": "包括需要申請嘅支援",
++    "accessibilitySupportExplanation": "只顯示服務方列出、30日內核查過嘅支援。要符合所有所選條件。冇列出嘅支援情況未明，請向服務方查詢。"
++  },
++  "pa": {
++    "black": "ਕਾਲੇ ਭਾਈਚਾਰੇ ਲਈ ਕੇਂਦ੍ਰਿਤ",
++    "girls": "ਕੁੜੀਆਂ/ਮਹਿਲਾਵਾਂ ਲਈ ਕੇਂਦ੍ਰਿਤ",
++    "indigenous": "ਆਦਿਵਾਸੀ ਭਾਈਚਾਰੇ ਲਈ ਕੇਂਦ੍ਰਿਤ",
++    "sortBestMatch": "ਸਭ ਤੋਂ ਠੀਕ",
++    "mySavedSearches": "ਸੰਭਾਲੇ ਫਿਲਟਰ",
++    "deleteSavedSearch": "ਫਿਲਟਰ ਮਿਟਾਓ",
++    "saveSearch": "ਫਿਲਟਰ ਸੰਭਾਲੋ",
++    "updateSearch": "ਫਿਲਟਰ ਅੱਪਡੇਟ ਕਰੋ",
++    "newFilter": "ਨਵਾਂ ਫਿਲਟਰ",
++    "supportAdapted": "ਅਨੁਕੂਲ ਅਤੇ ਸਮਾਵੇਸ਼ੀ ਪ੍ਰੋਗਰਾਮ",
++    "supportSignLanguage": "ਸੰਕੇਤ ਭਾਸ਼ਾ ਦੁਭਾਸ਼ੀਆ",
++    "supportCaptions": "ਸੁਣਨ ਸਹਾਇਤਾ ਅਤੇ ਸੁਰਖੀਆਂ",
++    "supportVisualFormats": "ਪਹੁੰਚਯੋਗ ਦ੍ਰਿਸ਼ ਫਾਰਮੈਟ",
++    "supportPerson": "ਸਹਾਇਕ ਵਿਅਕਤੀ ਦੇ ਪ੍ਰਬੰਧ",
++    "supportIncludeRequests": "ਬੇਨਤੀ ਕਰਨ ਵਾਲੀ ਸਹਾਇਤਾ ਵੀ ਸ਼ਾਮਲ ਕਰੋ",
++    "accessibilitySupportExplanation": "ਸਿਰਫ਼ ਪ੍ਰਦਾਤਾ ਵੱਲੋਂ ਦੱਸੀ ਸਹਾਇਤਾ ਜਿਸ ਦੀ 30 ਦਿਨਾਂ ਵਿੱਚ ਜਾਂਚ ਹੋਈ ਹੈ। ਹਰ ਚੁਣੀ ਚੋਣ ਮਿਲਣੀ ਚਾਹੀਦੀ ਹੈ। ਨਾ ਦੱਸੀ ਸਹਾਇਤਾ ਬਾਰੇ ਜਾਣਕਾਰੀ ਅਣਜਾਣ ਹੈ; ਪ੍ਰਦਾਤਾ ਨੂੰ ਪੁੱਛੋ।"
++  },
++  "ur": {
++    "black": "سیاہ فام کمیونٹی پر مرکوز",
++    "girls": "لڑکیوں/خواتین پر مرکوز",
++    "indigenous": "مقامی کمیونٹی پر مرکوز",
++    "sortBestMatch": "بہترین میچ",
++    "mySavedSearches": "محفوظ فلٹرز",
++    "deleteSavedSearch": "فلٹر حذف کریں",
++    "saveSearch": "فلٹر محفوظ کریں",
++    "updateSearch": "فلٹر تازہ کریں",
++    "newFilter": "نیا فلٹر",
++    "supportAdapted": "موافق اور شمولیتی پروگرام",
++    "supportSignLanguage": "اشاروں کی زبان کی ترجمانی",
++    "supportCaptions": "سماعت کی معاونت اور کیپشن",
++    "supportVisualFormats": "قابل رسائی بصری فارمیٹ",
++    "supportPerson": "معاون فرد کے انتظامات",
++    "supportIncludeRequests": "درخواست والی معاونت بھی شامل کریں",
++    "accessibilitySupportExplanation": "صرف فراہم کنندہ کی بتائی معاونت جس کی 30 دن میں جانچ ہوئی ہو۔ ہر منتخب شرط ملنی چاہیے۔ غیر درج معاونت نامعلوم ہے؛ فراہم کنندہ سے پوچھیں۔"
++  },
++  "ta": {
++    "black": "கருப்பின சமூகத்திற்கான",
++    "girls": "பெண்கள்/மகளிர் மையப்படுத்தியது",
++    "indigenous": "பழங்குடியினர் மையப்படுத்தியது",
++    "sortBestMatch": "சிறந்த பொருத்தம்",
++    "mySavedSearches": "சேமித்த வடிகள்",
++    "deleteSavedSearch": "வடிகட்டியை நீக்கவும்",
++    "saveSearch": "வடிகட்டியைச் சேமிக்கவும்",
++    "updateSearch": "வடிகட்டியைப் புதுப்பிக்கவும்",
++    "newFilter": "புதிய வடிகட்டி",
++    "supportAdapted": "தகவமைக்கப்பட்ட உள்ளடக்கிய நிகழ்ச்சிகள்",
++    "supportSignLanguage": "சைகை மொழி உரைபெயர்ப்பு",
++    "supportCaptions": "கேட்கும் ஆதரவும் வசனவரிகளும்",
++    "supportVisualFormats": "அணுகக்கூடிய காட்சி வடிவங்கள்",
++    "supportPerson": "ஆதரவு நபர் ஏற்பாடுகள்",
++    "supportIncludeRequests": "கோர வேண்டிய ஆதரவையும் சேர்க்கவும்",
++    "accessibilitySupportExplanation": "வழங்குநர் குறிப்பிட்டு 30 நாட்களுக்குள் சரிபார்க்கப்பட்ட ஆதரவு மட்டும். தேர்ந்தெடுத்த அனைத்தும் பொருந்த வேண்டும். குறிப்பிடாத ஆதரவு தெரியவில்லை; வழங்குநரிடம் கேளுங்கள்."
++  },
++  "tl": {
++    "black": "Nakatuon sa Black community",
++    "girls": "Nakatuon sa mga babae/kababaihan",
++    "indigenous": "Nakatuon sa Indigenous community",
++    "sortBestMatch": "Pinakamalapit na tugma",
++    "mySavedSearches": "Mga na-save na filter",
++    "deleteSavedSearch": "Tanggalin ang filter",
++    "saveSearch": "I-save ang filter",
++    "updateSearch": "I-update ang filter",
++    "newFilter": "Bagong filter",
++    "supportAdapted": "Mga inangkop at inklusibong programa",
++    "supportSignLanguage": "Interpretasyon sa sign language",
++    "supportCaptions": "Suporta sa pandinig at captions",
++    "supportVisualFormats": "Accessible na visual format",
++    "supportPerson": "Mga ayos para sa support person",
++    "supportIncludeRequests": "Isama ang suportang kailangang hilingin",
++    "accessibilitySupportExplanation": "Suportang nakalista ng provider at nasuri sa loob ng 30 araw lang. Kailangang tumugma ang lahat ng napili. Hindi alam ang suportang hindi nakalista; itanong sa provider."
++  },
++  "es": {
++    "black": "Enfoque comunidad negra",
++    "girls": "Enfoque niñas/mujeres",
++    "indigenous": "Enfoque indigena",
++    "sortBestMatch": "Mejor resultado",
++    "mySavedSearches": "Filtros guardados",
++    "deleteSavedSearch": "Eliminar filtro",
++    "saveSearch": "Guardar filtro",
++    "updateSearch": "Actualizar filtro",
++    "newFilter": "Nuevo filtro",
++    "supportAdapted": "Programas adaptados e inclusivos",
++    "supportSignLanguage": "Interpretación en lengua de signos",
++    "supportCaptions": "Apoyo auditivo y subtítulos",
++    "supportVisualFormats": "Formatos visuales accesibles",
++    "supportPerson": "Opciones para persona de apoyo",
++    "supportIncludeRequests": "Incluir apoyos que deben solicitarse",
++    "accessibilitySupportExplanation": "Solo apoyos indicados por el proveedor y comprobados en los últimos 30 días. Deben coincidir todas las opciones. Los apoyos no indicados son desconocidos; consulta al proveedor."
++  },
++  "ar": {
++    "black": "يركز على المجتمع الأسود",
++    "girls": "يركز على الفتيات/النساء",
++    "indigenous": "يركز على السكان الأصليين",
++    "sortBestMatch": "أفضل نتيجة",
++    "mySavedSearches": "الفلاتر المحفوظة",
++    "deleteSavedSearch": "حذف الفلتر",
++    "saveSearch": "حفظ الفلتر",
++    "updateSearch": "تحديث الفلتر",
++    "newFilter": "فلتر جديد",
++    "supportAdapted": "برامج مكيّفة وشاملة",
++    "supportSignLanguage": "ترجمة لغة الإشارة",
++    "supportCaptions": "دعم السمع والتسميات التوضيحية",
++    "supportVisualFormats": "تنسيقات مرئية ميسّرة",
++    "supportPerson": "ترتيبات الشخص الداعم",
++    "supportIncludeRequests": "تضمين الدعم الذي يتطلب طلبًا",
++    "accessibilitySupportExplanation": "الدعم الذي يذكره مقدم الخدمة وتم التحقق منه خلال 30 يومًا فقط. يجب مطابقة جميع الخيارات المختارة. الدعم غير المذكور غير معروف؛ اسأل مقدم الخدمة."
++  },
++  "fa": {
++    "black": "متمرکز بر جامعه سیاه‌پوست",
++    "girls": "متمرکز بر دختران/زنان",
++    "indigenous": "متمرکز بر بومیان",
++    "sortBestMatch": "بهترین نتیجه",
++    "mySavedSearches": "فیلترهای ذخیره‌شده",
++    "deleteSavedSearch": "حذف فیلتر",
++    "saveSearch": "ذخیرهٔ فیلتر",
++    "updateSearch": "به‌روزرسانی فیلتر",
++    "newFilter": "فیلتر جدید",
++    "supportAdapted": "برنامه‌های مناسب‌سازی‌شده و فراگیر",
++    "supportSignLanguage": "ترجمه زبان اشاره",
++    "supportCaptions": "پشتیبانی شنوایی و زیرنویس",
++    "supportVisualFormats": "قالب‌های بصری دسترس‌پذیر",
++    "supportPerson": "ترتیبات فرد پشتیبان",
++    "supportIncludeRequests": "پشتیبانی نیازمند درخواست را هم شامل کن",
++    "accessibilitySupportExplanation": "فقط پشتیبانی اعلام‌شده توسط ارائه‌دهنده که طی ۳۰ روز بررسی شده است. همه گزینه‌های انتخابی باید مطابقت داشته باشند. پشتیبانی ذکرنشده نامشخص است؛ از ارائه‌دهنده بپرسید."
++  },
++  "hi": {
++    "black": "काली समुदाय-केंद्रित",
++    "girls": "लड़कियों/महिलाओं-केंद्रित",
++    "indigenous": "आदिवासी-केंद्रित",
++    "sortBestMatch": "सबसे अच्छा मेल",
++    "mySavedSearches": "सहेजे गए फ़िल्टर",
++    "deleteSavedSearch": "फ़िल्टर हटाएँ",
++    "saveSearch": "फ़िल्टर सहेजें",
++    "updateSearch": "फ़िल्टर अपडेट करें",
++    "newFilter": "नया फ़िल्टर",
++    "supportAdapted": "अनुकूलित और समावेशी कार्यक्रम",
++    "supportSignLanguage": "सांकेतिक भाषा दुभाषिया",
++    "supportCaptions": "सुनने में सहायता और कैप्शन",
++    "supportVisualFormats": "सुलभ दृश्य प्रारूप",
++    "supportPerson": "सहायक व्यक्ति की व्यवस्था",
++    "supportIncludeRequests": "अनुरोध वाली सहायता भी शामिल करें",
++    "accessibilitySupportExplanation": "केवल प्रदाता द्वारा बताई गई सहायता जिसकी पिछले 30 दिनों में जाँच हुई हो। सभी चुने विकल्प मिलने चाहिए। न बताई गई सहायता अज्ञात है; प्रदाता से पूछें।"
++  },
++  "pt": {
++    "black": "Focado na comunidade negra",
++    "girls": "Focado em meninas/mulheres",
++    "indigenous": "Focado em povos indígenas",
++    "sortBestMatch": "Melhor resultado",
++    "mySavedSearches": "Filtros salvos",
++    "deleteSavedSearch": "Excluir filtro",
++    "saveSearch": "Salvar filtro",
++    "updateSearch": "Atualizar filtro",
++    "newFilter": "Novo filtro",
++    "supportAdapted": "Programas adaptados e inclusivos",
++    "supportSignLanguage": "Interpretação em língua gestual",
++    "supportCaptions": "Apoio auditivo e legendas",
++    "supportVisualFormats": "Formatos visuais acessíveis",
++    "supportPerson": "Condições para pessoa de apoio",
++    "supportIncludeRequests": "Incluir apoios que exigem pedido",
++    "accessibilitySupportExplanation": "Apenas apoios indicados pelo prestador e verificados nos últimos 30 dias. Todas as opções devem corresponder. Apoios não indicados são desconhecidos; contacte o prestador."
++  },
++  "gu": {
++    "black": "કાળા સમુદાય પર કેન્દ્રિત",
++    "girls": "છોકરીઓ/મહિલાઓ પર કેન્દ્રિત",
++    "indigenous": "આદિવાસી સમુદાય પર કેન્દ્રિત",
++    "sortBestMatch": "શ્રેષ્ઠ મેળ",
++    "mySavedSearches": "સાચવેલા ફિલ્ટર્સ",
++    "deleteSavedSearch": "ફિલ્ટર કાઢી નાખો",
++    "saveSearch": "ફિલ્ટર સાચવો",
++    "updateSearch": "ફિલ્ટર અપડેટ કરો",
++    "newFilter": "નવું ફિલ્ટર",
++    "supportAdapted": "અનુકૂળ અને સમાવેશી કાર્યક્રમો",
++    "supportSignLanguage": "સાંકેતિક ભાષાનું અર્થઘટન",
++    "supportCaptions": "શ્રવણ સહાય અને કૅપ્શન",
++    "supportVisualFormats": "સુલભ દૃશ્ય ફોર્મેટ",
++    "supportPerson": "સહાયક વ્યક્તિની વ્યવસ્થા",
++    "supportIncludeRequests": "વિનંતી કરવી પડે તેવી સહાય પણ સામેલ કરો",
++    "accessibilitySupportExplanation": "પ્રદાતા દ્વારા જણાવેલી અને 30 દિવસમાં તપાસેલી સહાય જ. બધી પસંદ કરેલી શરતો મળવી જોઈએ. ન જણાવેલી સહાય અજ્ઞાત છે; પ્રદાતાને પૂછો."
++  },
++  "bn": {
++    "black": "কৃষ্ণাঙ্গ সম্প্রদায়-কেন্দ্রিক",
++    "girls": "মেয়ে/নারী-কেন্দ্রিক",
++    "indigenous": "আদিবাসী-কেন্দ্রিক",
++    "sortBestMatch": "সেরা মিল",
++    "mySavedSearches": "সংরক্ষিত ফিল্টার",
++    "deleteSavedSearch": "ফিল্টার মুছুন",
++    "saveSearch": "ফিল্টার সংরক্ষণ করুন",
++    "updateSearch": "ফিল্টার হালনাগাদ করুন",
++    "newFilter": "নতুন ফিল্টার",
++    "supportAdapted": "অভিযোজিত ও অন্তর্ভুক্তিমূলক কার্যক্রম",
++    "supportSignLanguage": "সাংকেতিক ভাষার দোভাষী",
++    "supportCaptions": "শ্রবণ সহায়তা ও ক্যাপশন",
++    "supportVisualFormats": "প্রবেশগম্য দৃশ্যমান বিন্যাস",
++    "supportPerson": "সহায়ক ব্যক্তির ব্যবস্থা",
++    "supportIncludeRequests": "অনুরোধ করতে হয় এমন সহায়তাও ধরুন",
++    "accessibilitySupportExplanation": "শুধু আয়োজকের জানানো এবং ৩০ দিনের মধ্যে যাচাই করা সহায়তা। সব বাছাই করা শর্ত মিলতে হবে। উল্লেখ না করা সহায়তা অজানা; আয়োজককে জিজ্ঞাসা করুন।"
++  },
++  "ja": {
++    "black": "黒人コミュニティ向け",
++    "girls": "女子・女性向け",
++    "indigenous": "先住民コミュニティ向け",
++    "sortBestMatch": "おすすめ",
++    "mySavedSearches": "保存したフィルター",
++    "deleteSavedSearch": "フィルターを削除",
++    "saveSearch": "フィルターを保存",
++    "updateSearch": "フィルターを更新",
++    "newFilter": "新しいフィルター",
++    "supportAdapted": "配慮のあるインクルーシブなプログラム",
++    "supportSignLanguage": "手話通訳",
++    "supportCaptions": "聴覚支援と字幕",
++    "supportVisualFormats": "利用しやすい視覚資料",
++    "supportPerson": "支援者に関する取り決め",
++    "supportIncludeRequests": "申し込みが必要な支援も含める",
++    "accessibilitySupportExplanation": "主催者が明記し、30日以内に確認した支援のみ。選択したすべての条件が必要です。記載のない支援は不明です。主催者に確認してください。"
++  },
++  "ko": {
++    "black": "흑인 커뮤니티 중심",
++    "girls": "여학생/여성 중심",
++    "indigenous": "원주민 커뮤니티 중심",
++    "sortBestMatch": "가장 적합",
++    "mySavedSearches": "저장한 필터",
++    "deleteSavedSearch": "필터 삭제",
++    "saveSearch": "필터 저장",
++    "updateSearch": "필터 업데이트",
++    "newFilter": "새 필터",
++    "supportAdapted": "맞춤형 및 포용적 프로그램",
++    "supportSignLanguage": "수어 통역",
++    "supportCaptions": "청각 지원 및 자막",
++    "supportVisualFormats": "접근 가능한 시각 자료",
++    "supportPerson": "지원 인력 관련 사항",
++    "supportIncludeRequests": "신청이 필요한 지원 포함",
++    "accessibilitySupportExplanation": "제공자가 명시하고 30일 이내에 확인한 지원만 표시합니다. 선택한 모든 조건이 일치해야 합니다. 명시되지 않은 지원은 알 수 없으므로 제공자에게 문의하세요."
++  },
++  "hu": {
++    "black": "Fekete közösség fókusz",
++    "girls": "Lányok/nők fókusz",
++    "indigenous": "Őslakos fókusz",
++    "sortBestMatch": "Legjobb találat",
++    "mySavedSearches": "Mentett szűrők",
++    "deleteSavedSearch": "Szűrő törlése",
++    "saveSearch": "Szűrő mentése",
++    "updateSearch": "Szűrő frissítése",
++    "newFilter": "Új szűrő",
++    "supportAdapted": "Adaptált és befogadó programok",
++    "supportSignLanguage": "Jelnyelvi tolmácsolás",
++    "supportCaptions": "Hallástámogatás és feliratok",
++    "supportVisualFormats": "Akadálymentes vizuális formátumok",
++    "supportPerson": "Segítő személyre vonatkozó feltételek",
++    "supportIncludeRequests": "Az igényelendő támogatásokkal együtt",
++    "accessibilitySupportExplanation": "Csak a szolgáltató által jelzett, 30 napon belül ellenőrzött támogatás. Minden kiválasztott feltételnek teljesülnie kell. A nem jelzett támogatás ismeretlen; kérdezd a szolgáltatót."
++  }
++}
