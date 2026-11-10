@@ -230,4 +230,4 @@ async function main(){
   await footerReachable(page,'hub-footer-real');
   const final=await(await context.request.get(BASE+'/hosting-release.json')).json();assert.equal(final.sourceCommit,COMMIT);assert.equal(final.nativeFeedSha256,NATIVE);assert.deepEqual(globalPageErrors,[]);log('SUPPORT-REAL-VIEWPORT-SUPPLEMENT-COMPLETE',{sourceCommit:COMMIT,scope:'Only320darkfont200 supportsection real viewport frames; not repeated Hub behavior',humanVisualReviewComplete:false,visualAcceptance:false});await context.close();
 }
-main().catch(error=>{log('FIRST-FAILURE',{message:error.message,stack:error.stack});process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();});
+main().catch(async error=>{log('FIRST-FAILURE',{message:error.message,stack:error.stack});if(activePage&&!activePage.isClosed())try{const target=path.join(CAPTURE,'hub-FAILURE-viewport.png');await activePage.screenshot({path:target,fullPage:false});const png=fs.readFileSync(target);log('failure-capture',{path:target,sha256:digest(png),sourceCommit:COMMIT});}catch{}process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();});

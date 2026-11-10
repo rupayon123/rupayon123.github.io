@@ -8,7 +8,7 @@
     "sourceCase": null,
     "behaviorCases": [],
     "viewportSection": "home-320-dark-font200-saved-real",
-    "scriptSHA256": "1296c6bf11d8908ed0fbb1ecf1e8efb24726a6ecbfcb04f682e6aaf7ccac2277"
+    "scriptSHA256": "ede0f317b0a72e6243e3dbc9011fc4a8e25885a66007b9422ec8fa5c8f058044"
   },
   "hub-support-dark-320-font200": {
     "script": "run-hub-support-viewport.cjs",
@@ -19,7 +19,7 @@
     "sourceCase": null,
     "behaviorCases": [],
     "viewportSection": "hub-320-dark-font200-support-real",
-    "scriptSHA256": "0487d840511a0e8395a172495408a2fa63fd0acba024c8158720d14ec0b9c197"
+    "scriptSHA256": "e3e011a373bfc3ca7de029bb16b274fee9ae0df1ae5f11fb5b8cbcd8023dfd0d"
   },
   "c-browse-light": {
     "script": "run-c-scene.cjs",

@@ -1,5 +1,5 @@
 """SOURCE ONLY. One selected remote scene; no automatic continuation. Never upload raw logs or profiles."""
-import hashlib,json,os,re,signal,subprocess,time
+import hashlib,json,os,re,signal,subprocess,time,tempfile
 from pathlib import Path
 
 HERE=Path(__file__).resolve().parent
@@ -7,7 +7,9 @@ SCENES=json.loads((HERE/'scenes.json').read_text());KEY=os.environ['GTA_EVIDENCE
 SCENE=SCENES[KEY]
 TEMP=Path(os.environ['RUNNER_TEMP'])/'gta-remaining-scene-evidence'
 TEMP.mkdir(exist_ok=False)
-CAPTURE=TEMP/'captures';TMP=TEMP/'profile';TMP.mkdir()
+CAPTURE=TEMP/'captures';TMP=Path(tempfile.mkdtemp(prefix='gtaq-',dir='/tmp'))
+# Chromium creates Unix-domain sockets below TMPDIR. Keep the owned profile
+# root short regardless of the scene/evidence path length.
 SCRIPT=HERE/SCENE['script']
 assert hashlib.sha256(SCRIPT.read_bytes()).hexdigest()==SCENE['scriptSHA256']
 receipt={'scope':KEY,'sourceCommit':os.environ['GTA_QA_SOURCE_COMMIT'],'nativeSHA256':os.environ['GTA_QA_NATIVE_SHA256'],'limitKiB':2097152,'nodeHeapMiB':512,'deadlineSeconds':1200,'memoryMetric':'Linux MemAvailable/MemTotal percent; NOT macOS memory_pressure','minimumHostFreePercent':100,'peakOwnedRSSKiB':0,'passed':False}

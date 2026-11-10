@@ -235,4 +235,4 @@ async function main(){
   await footerReachable(page,'home-footer-real');
   const final=await(await context.request.get(BASE+'/hosting-release.json')).json();assert.equal(final.sourceCommit,COMMIT);assert.equal(final.nativeFeedSha256,NATIVE);assert.deepEqual(globalPageErrors,[]);log('SAVED-REAL-VIEWPORT-SUPPLEMENT-COMPLETE',{sourceCommit:COMMIT,scope:'Only320darkfont200 savedsection real viewport frames; not repeated full Home',humanVisualReviewComplete:false,visualAcceptance:false});await context.close();
 }
-main().catch(error=>{log('FIRST-FAILURE',{message:error.message,stack:error.stack});process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();});
+main().catch(async error=>{log('FIRST-FAILURE',{message:error.message,stack:error.stack});if(activePage&&!activePage.isClosed())try{const target=path.join(CAPTURE,'home-FAILURE-viewport.png');await activePage.screenshot({path:target,fullPage:false});const png=fs.readFileSync(target);log('failure-capture',{path:target,sha256:digest(png),sourceCommit:COMMIT});}catch{}process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();});
