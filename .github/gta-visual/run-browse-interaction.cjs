@@ -206,18 +206,30 @@ async function geometry(page, label) {
 async function enlargeFonts(page) {
   return page.evaluate(async () => {
     await document.fonts.ready;
+    // Restore each original inline value before remeasuring. Sorting may replace
+    // result cards; their new nodes must be included without doubling old nodes twice.
+    if (window.__gtaResizeOriginals) {
+      for (const [element, original] of window.__gtaResizeOriginals) {
+        if (original.value) element.style.setProperty('font-size', original.value, original.priority);
+        else element.style.removeProperty('font-size');
+      }
+    }
+    window.__gtaResizeOriginals = new Map();
     const selectorFor=e=>{const parts=[];while(e&&e.nodeType===1){const parent=e.parentElement;parts.unshift(e.tagName.toLowerCase()+(parent?':nth-child('+([...parent.children].indexOf(e)+1)+')':''));e=parent;}return parts.join(' > ');};
     const snapshot=e=>({selector:selectorFor(e),text:e.textContent?.trim().slice(0,100),connected:e.isConnected,fontSize:getComputedStyle(e).fontSize,font:getComputedStyle(e).font,inlineFontSize:e.style.getPropertyValue('font-size'),inlinePriority:e.style.getPropertyPriority('font-size'),inlineStyle:e.getAttribute('style')});
     const rows = [...document.querySelectorAll('h1,h2,h3,h4,p,button,input,select,textarea,label,legend,summary,a,li,dt,dd,span')]
       .filter(e => !e.closest('svg,.gta-artwork,.sr-only,.oe-sr-only')).map(e => ({ e, before: parseFloat(getComputedStyle(e).fontSize), beforeState:snapshot(e) }));
-    for (const { e, before } of rows) e.style.setProperty('font-size', before * 2 + 'px', 'important');
+    for (const { e, before } of rows) {
+      window.__gtaResizeOriginals.set(e, {value:e.style.getPropertyValue('font-size'),priority:e.style.getPropertyPriority('font-size')});
+      e.style.setProperty('font-size', before * 2 + 'px', 'important');
+    }
     const immediate=rows.map(({e})=>snapshot(e));
     const activeFontTransitionsBeforeSettle=document.getAnimations().filter(a=>a.effect?.getKeyframes().some(f=>typeof f.fontSize==='string')).length;
     const relevantAnimations=document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity && a.effect?.target instanceof Element && a.effect.target.checkVisibility({visibilityProperty:true,contentVisibilityAuto:true}));
     let settleTimer;try{await Promise.race([Promise.allSettled(relevantAnimations.map(a=>a.finished)),new Promise((_,reject)=>{settleTimer=setTimeout(()=>reject(new Error('Rendered finite animation did not settle within3000ms; visibility='+document.visibilityState+'; hasFocus='+document.hasFocus()+'; '+JSON.stringify(relevantAnimations.filter(a=>a.playState!=='finished').map(a=>({type:a.constructor.name,state:a.playState,properties:a.effect?.getKeyframes().map(f=>Object.keys(f)).flat()})).slice(0,5)))),3000);})]);}finally{clearTimeout(settleTimer);} 
     await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     const diagnostics=rows.map(({e,before,beforeState},index)=>({before,beforeState,immediate:immediate[index],settled:snapshot(e)}));
-    const samples = rows.filter(({e}) => e.getClientRects().length > 0 && e.checkVisibility({visibilityProperty:true,contentVisibilityAuto:true})).map(({e,before,beforeState}) => ({ element: e.tagName, selector:beforeState.selector, before, after: parseFloat(getComputedStyle(e).fontSize) }));
+    const samples = rows.filter(({e}) => e.getClientRects().length > 0 && e.checkVisibility({visibilityProperty:true,contentVisibilityAuto:true})).map(({e,before,beforeState}) => ({ element: e.tagName, className:e.className, selector:beforeState.selector, before, after: parseFloat(getComputedStyle(e).fontSize) }));
     return { count: rows.length, samples, diagnostics, fontReadiness:document.fonts.status, actualTwoAnimationFramesWaited:true,activeFontTransitionsBeforeSettle,finiteAnimationsSettledBeforeMeasurement:true,documentVisibilityAtMeasurement:document.visibilityState,documentHasFocusAtMeasurement:document.hasFocus() };
   });
 }
@@ -378,6 +390,12 @@ async function main(){
       assert(fit.available>=fit.textWidth+fit.arrowAllowance,`Sort option clips at 200%: ${JSON.stringify(fit)}`);
     }
     await sort.selectOption('relevance');await idleResults(page);
+    const refreshed=await enlargeFonts(page);
+    for(const row of refreshed.samples)assert(Math.abs(row.after/row.before-2)<0.01,'Current rendered text must be twice its own baseline');
+    const cardTitles=refreshed.samples.filter(row=>row.selector.includes('article') && row.element==='H3');
+    const cardDescriptions=refreshed.samples.filter(row=>row.selector.includes('article') && row.element==='P' && row.className.split(/\s+/).includes('oe-summary'));
+    assert(cardTitles.length>0&&cardDescriptions.length>0,'Current result card titles and descriptions must be measured after sorting');
+    log('post-sort-font200',{renderedSamples:refreshed.samples.length,cardTitles:cardTitles.length,cardDescriptions:cardDescriptions.length,allComputedDoubled:true});
     await viewportSectionCapture(page,'.oe-result-toolbar',`${surface}-${mode}-320-rtl-font200-sort`);
     await geometry(page,`${surface}-${mode}-320-rtl-font200`);await capture(page,`${surface}-${mode}-320-rtl-font200`);await viewportSectionCapture(page,'.oe-filters',`${surface}-${mode}-320-rtl-font200-filters`);await axe(page,`${surface}-${mode}-320-rtl-font200`);
     await page.locator('.language-tool select').selectOption('en');await page.waitForFunction(()=>document.documentElement.lang==='en');
