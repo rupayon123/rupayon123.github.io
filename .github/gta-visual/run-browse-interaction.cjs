@@ -371,6 +371,14 @@ async function main(){
     await page.locator('.language-tool select').selectOption('ar');await page.waitForFunction(()=>document.documentElement.lang==='ar'&&document.documentElement.dir==='rtl');await idleResults(page);
     await geometry(page,`${surface}-${mode}-320-rtl`);await capture(page,`${surface}-${mode}-320-rtl`);await viewportSectionCapture(page,'.oe-community-filters',`${surface}-${mode}-320-rtl-community`);
     const enlarged=await enlargeFonts(page);for(const row of enlarged.samples)assert(Math.abs(row.after/row.before-2)<0.01);
+    const sort=page.locator('#oe-sort');
+    for(const value of await sort.locator('option').evaluateAll(options=>options.map(option=>option.value))){
+      await sort.selectOption(value);await idleResults(page);
+      const fit=await sort.evaluate(element=>{const css=getComputedStyle(element),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');ctx.font=css.font;const label=element.selectedOptions[0].textContent.trim(),textWidth=ctx.measureText(label).width;return {label,textWidth,available:element.clientWidth-parseFloat(css.paddingLeft)-parseFloat(css.paddingRight),arrowAllowance:Math.max(24,parseFloat(css.fontSize)*1.2)};});
+      assert(fit.available>=fit.textWidth+fit.arrowAllowance,`Sort option clips at 200%: ${JSON.stringify(fit)}`);
+    }
+    await sort.selectOption('relevance');await idleResults(page);
+    await viewportSectionCapture(page,'.oe-result-toolbar',`${surface}-${mode}-320-rtl-font200-sort`);
     await geometry(page,`${surface}-${mode}-320-rtl-font200`);await capture(page,`${surface}-${mode}-320-rtl-font200`);await viewportSectionCapture(page,'.oe-filters',`${surface}-${mode}-320-rtl-font200-filters`);await axe(page,`${surface}-${mode}-320-rtl-font200`);
     await page.locator('.language-tool select').selectOption('en');await page.waitForFunction(()=>document.documentElement.lang==='en');
   });

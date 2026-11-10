@@ -5,7 +5,7 @@
       "browse",
       "light"
     ],
-    "scope": "Browse-light saved-filter interaction and RTL; normal and text-size matrix reused from e3b651e8",
+    "scope": "Browse-light saved-filter interaction, Arabic RTL at 200% and sort fit; other scenes unrun",
     "family": "C_interaction",
     "completionEvent": "C-SCENE-COMPLETE",
     "sourceCase": "browse-light immutable preview",
@@ -14,6 +14,23 @@
       "browse-light actual RTL filter reflow"
     ],
     "viewportSection": null,
-    "scriptSHA256": "2c0f46d4bee6f2c7bae64b176276a4ebe2d475e47c40d127451ff3837bb99c2e"
+    "scriptSHA256": "62493f76232903e0ab39f404af9ace049ab4372c5f7d00c3d97a88e85f82bd4a"
+  },
+  "c-browse-dark-interaction": {
+    "script": "run-browse-interaction.cjs",
+    "args": [
+      "browse",
+      "dark"
+    ],
+    "scope": "Browse-dark saved-filter interaction, Arabic RTL at 200% and sort fit; other scenes unrun",
+    "family": "C_interaction",
+    "completionEvent": "C-SCENE-COMPLETE",
+    "sourceCase": "browse-dark immutable preview",
+    "behaviorCases": [
+      "browse-dark real support and scoped preset interactions",
+      "browse-dark actual RTL filter reflow"
+    ],
+    "viewportSection": null,
+    "scriptSHA256": "62493f76232903e0ab39f404af9ace049ab4372c5f7d00c3d97a88e85f82bd4a"
   }
 }
