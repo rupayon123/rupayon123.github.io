@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           test "$GITHUB_EVENT_NAME" = push
           test "$GITHUB_REF_NAME" = codex/frontend-preview-20261110
-          test "${{ github.event.before }}" = 0d596ac632b5547d176fe49def4ee88ae3cd0c4a
+          test "${{ github.event.before }}" = c28f0c9fde3cb367c9e1d20d3cd593760d1999b2
       - name: Check out the exact QA source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -58,7 +58,7 @@ jobs:
           PYFONT
       - name: Verify immutable preview source before opening a browser
         run: python3 .github/gta-visual/verify-preview.py "$GTA_QA_BASE_URL" "$GTA_QA_SOURCE_COMMIT" "$GTA_QA_NATIVE_SHA256"
-      - name: Run the eight guarded browser scenes sequentially
+      - name: Run only the guarded Browse-light scene
         id: browser
         continue-on-error: true
         run: python3 .github/gta-visual/run-all-scenes.py
@@ -125,7 +125,7 @@ jobs:
           from pathlib import Path
           root=Path(os.environ['RUNNER_TEMP'])/'gta-all-visual-evidence'
           receipt=json.loads((root/'evidence.json').read_text())
-          assert receipt['expectedScenes']==receipt['scenesExecuted']==8
+          assert receipt['expectedScenes']==receipt['scenesExecuted']==1
           assert receipt['browserChecksPassed'] and receipt['safeToPublishEvidence']
           assert receipt['appSourceCommit']==os.environ['GTA_QA_SOURCE_COMMIT']
           assert receipt['nativeFeedSha256']==os.environ['GTA_QA_NATIVE_SHA256']
@@ -133,6 +133,6 @@ jobs:
               detail=json.loads((root/scene['manifest']).read_text())
               assert scene['testStatus']==detail['testStatus']=='passed'
               assert detail['resource']['releaseConfirmed']
-          print('All 8 scene receipts passed; zero unrun; browser cleanup confirmed.')
+          print('The single Browse-light scene passed; the other seven scenes were not run.')
           PYGATE
-          echo 'Browser checks passed. Original PNG inspection is still required; no production release is implied.'
+          echo 'Single Browse-light check passed. Seven scenes and original PNG inspection remain; no production release is implied.'

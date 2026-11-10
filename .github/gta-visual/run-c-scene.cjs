@@ -21,8 +21,8 @@ async function capture(page,name){
     await page.evaluate(()=>window.scrollTo(0,0));await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
     const atCapture=await state();log('capture-state',{name,before,atCapture,focusIntentionallyUnchanged:true});
     assert(await page.evaluate(e=>document.activeElement===e,focused),'Capture must preserve original focus');
-    const viewportTarget=path.join(CAPTURE,name+'-actual-viewport.png');await page.screenshot({path:viewportTarget,fullPage:false});const viewportPng=fs.readFileSync(viewportTarget);const actualViewport=await page.evaluate(()=>({width:innerWidth,height:innerHeight,x:scrollX,y:scrollY}));assert.equal(viewportPng.readUInt32BE(16),actualViewport.width);assert.equal(viewportPng.readUInt32BE(20),actualViewport.height);log('actual-viewport-capture',{name,path:viewportTarget,sha256:digest(viewportPng),sourceCommit:COMMIT,...actualViewport});
-    const target=path.join(CAPTURE,name+'.png');await page.screenshot({path:target,fullPage:true});const png=fs.readFileSync(target);log('capture',{name,path:target,sha256:digest(png),bytes:png.length,pixelWidth:png.readUInt32BE(16),pixelHeight:png.readUInt32BE(20),sourceCommit:COMMIT});
+    const viewportTarget=path.join(CAPTURE,name+'-actual-viewport.png');await page.screenshot({path:viewportTarget,fullPage:false});const viewportPng=await pngMetadata(viewportTarget);const actualViewport=await page.evaluate(()=>({width:innerWidth,height:innerHeight,x:scrollX,y:scrollY}));assert.equal(viewportPng.pixelWidth,actualViewport.width);assert.equal(viewportPng.pixelHeight,actualViewport.height);log('actual-viewport-capture',{name,path:viewportTarget,sha256:viewportPng.sha256,sourceCommit:COMMIT,...actualViewport});
+    const target=path.join(CAPTURE,name+'.png');await page.screenshot({path:target,fullPage:true});const png=await pngMetadata(target);log('capture',{name,path:target,sha256:png.sha256,bytes:png.bytes,pixelWidth:png.pixelWidth,pixelHeight:png.pixelHeight,sourceCommit:COMMIT});
   } catch(error) {primaryError=error;throw error;} finally {
     let cleanupError;
     try {
@@ -45,6 +45,17 @@ const LEGACY = 'gta-stem-named-filters-v1';
 const DATABASE = 'gta-scoped-saved-filters', KEY = 'gta.scopedPresets.v2';
 const log = (event, data = {}) => console.log(JSON.stringify({ event, ...data }));
 const digest = value => crypto.createHash('sha256').update(value).digest('hex');
+async function pngMetadata(file){
+  const header=Buffer.alloc(24),fd=fs.openSync(file,'r');try{assert.equal(fs.readSync(fd,header,0,24,0),24);}finally{fs.closeSync(fd);}
+  const hash=crypto.createHash('sha256');for await(const chunk of fs.createReadStream(file,{highWaterMark:65536}))hash.update(chunk);
+  return {sha256:hash.digest('hex'),pixelWidth:header.readUInt32BE(16),pixelHeight:header.readUInt32BE(20),bytes:fs.statSync(file).size};
+}
+function browserOwnedPids(){
+  const rows=[];for(const entry of fs.readdirSync('/proc')){if(!/^\d+$/.test(entry))continue;try{const stat=fs.readFileSync('/proc/'+entry+'/stat','utf8');const rest=stat.slice(stat.lastIndexOf(')')+2).split(' ');let command='';try{command=fs.readFileSync('/proc/'+entry+'/cmdline','utf8');}catch{}rows.push({pid:Number(entry),ppid:Number(rest[1]),command});}catch{}}
+  const owned=new Set([process.pid]);for(let i=0;i<32;i++){const prior=owned.size;for(const row of rows)if(owned.has(row.ppid)||(process.env.TMPDIR&&row.command.includes(process.env.TMPDIR)))owned.add(row.pid);if(prior===owned.size)break;}
+  owned.delete(process.pid);return [...owned];
+}
+
 const passed = [];
 const pendingVisualReviews = [];
 let browser;
@@ -224,7 +235,7 @@ async function theme(page,value){
   if(current!==value)await page.getByRole('button',{name:value==='dark'?'Switch to dark theme':'Switch to light theme',exact:true}).click();
   await page.waitForFunction(value=>document.documentElement.dataset.theme===value,value);
 }
-async function elementCapture(page,selector,name){const locator=page.locator(selector).first();if(!await locator.isVisible())return;await page.evaluate(()=>document.fonts.ready);const target=path.join(CAPTURE,name+'.png');log('element-capture-state',{name,selector,...await page.evaluate(()=>({activeElement:{tag:document.activeElement?.tagName,className:document.activeElement?.getAttribute('class')},scrollX,scrollY}))});await locator.screenshot({path:target});const png=fs.readFileSync(target);log('element-capture',{selector,name,path:target,sha256:digest(png),pixelWidth:png.readUInt32BE(16),pixelHeight:png.readUInt32BE(20),sourceCommit:COMMIT});}
+async function elementCapture(page,selector,name){const locator=page.locator(selector).first();if(!await locator.isVisible())return;await page.evaluate(()=>document.fonts.ready);const target=path.join(CAPTURE,name+'.png');log('element-capture-state',{name,selector,...await page.evaluate(()=>({activeElement:{tag:document.activeElement?.tagName,className:document.activeElement?.getAttribute('class')},scrollX,scrollY}))});await locator.screenshot({path:target});const png=await pngMetadata(target);log('element-capture',{selector,name,path:target,sha256:png.sha256,pixelWidth:png.pixelWidth,pixelHeight:png.pixelHeight,sourceCommit:COMMIT});}
 async function axe(page,label){
   const previous=await page.evaluateHandle(()=>document.activeElement);
   const state=()=>page.evaluate(()=>({tag:document.activeElement?.tagName,className:document.activeElement?.getAttribute('class'),scrollX,scrollY}));
@@ -251,8 +262,8 @@ async function viewportSectionCapture(page,selector,name){
       await page.evaluate(y=>window.scrollTo(0,y),requested);await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
       const state=await page.evaluate(()=>{const e=document.querySelector('.skip-link'),r=e?.getBoundingClientRect();return {x:scrollX,y:scrollY,width:innerWidth,height:innerHeight,activeElement:{tag:document.activeElement?.tagName,className:document.activeElement?.getAttribute('class')},skipLink:e?{focused:e.matches(':focus'),top:getComputedStyle(e).top,rect:{top:r.top,bottom:r.bottom,height:r.height}}:null};});
       assert.equal(state.width,before.width);assert.equal(state.height,before.height);assert(await page.evaluate(e=>document.activeElement===e,focused),'Real viewport capture preserves exact focus');assert(state.y>lastY,'Scroll frames must advance');lastY=state.y;
-      const target=path.join(CAPTURE,`${name}-viewport-${index+1}.png`);await page.screenshot({path:target,fullPage:false});const png=fs.readFileSync(target);assert.equal(png.readUInt32BE(16),before.width);assert.equal(png.readUInt32BE(20),before.height);
-      const frame={index:index+1,path:target,sha256:digest(png),pixelWidth:png.readUInt32BE(16),pixelHeight:png.readUInt32BE(20),state};frames.push(frame);log('real-viewport-section-frame',{name,selector,sourceCommit:COMMIT,...frame});
+      const target=path.join(CAPTURE,`${name}-viewport-${index+1}.png`);await page.screenshot({path:target,fullPage:false});const png=await pngMetadata(target);assert.equal(png.pixelWidth,before.width);assert.equal(png.pixelHeight,before.height);
+      const frame={index:index+1,path:target,sha256:png.sha256,pixelWidth:png.pixelWidth,pixelHeight:png.pixelHeight,state};frames.push(frame);log('real-viewport-section-frame',{name,selector,sourceCommit:COMMIT,...frame});
       if(state.y+state.height>=Math.min(section.documentHeight,section.bottom+24)){log('real-viewport-section-covered',{name,selector,section,frames:frames.length,overlapPixels:120,unchangedViewport:true,noStitchingOrEditing:true});return;}
       requested=Math.min(section.documentHeight-state.height,state.y+state.height-120);
     }
@@ -281,8 +292,8 @@ async function dialogViewportSectionCapture(page,selector,name){
       assert(state.port.top>=-2&&state.port.bottom<=state.height+2&&state.port.left>=-2&&state.port.right<=state.width+2,'Actual dialog scrollport must be inside real viewport');
       assert(state.clientHeight>120);assert(state.scrollTop>lastTop,'Dialog frames must advance');lastTop=state.scrollTop;
       assert(await page.evaluate(e=>document.activeElement===e,focused),'Dialog capture preserves exact focus');
-      const target=path.join(CAPTURE,name+'-dialog-viewport-'+(index+1)+'.png');await page.screenshot({path:target,fullPage:false});const png=fs.readFileSync(target);assert.equal(png.readUInt32BE(16),before.width);assert.equal(png.readUInt32BE(20),before.height);
-      log('real-dialog-section-frame',{name,selector,sourceCommit:COMMIT,index:index+1,path:target,sha256:digest(png),pixelWidth:png.readUInt32BE(16),pixelHeight:png.readUInt32BE(20),state});
+      const target=path.join(CAPTURE,name+'-dialog-viewport-'+(index+1)+'.png');await page.screenshot({path:target,fullPage:false});const png=await pngMetadata(target);assert.equal(png.pixelWidth,before.width);assert.equal(png.pixelHeight,before.height);
+      log('real-dialog-section-frame',{name,selector,sourceCommit:COMMIT,index:index+1,path:target,sha256:png.sha256,pixelWidth:png.pixelWidth,pixelHeight:png.pixelHeight,state});
       if(state.scrollTop+state.clientHeight>=Math.min(section.scrollHeight,section.bottom+24)){log('real-dialog-section-covered',{name,selector,section,frames:index+1,overlapPixels:120,unchangedViewport:true,noStitchingOrEditing:true});return;}
       requested=Math.min(section.scrollHeight-state.clientHeight,state.scrollTop+state.clientHeight-120);
     }
@@ -317,16 +328,24 @@ async function footerReachable(page,name){
  try{const links=page.locator('.legal-footer a');assert((await links.count())>0);
   for(let i=0;i<await links.count();i++){const link=links.nth(i);await link.scrollIntoViewIfNeeded();const r=await link.evaluate(e=>{const r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:innerWidth,height:innerHeight,uncovered:!!hit&&(hit===e||e.contains(hit))};});assert(r.left>=-2&&r.right<=r.width+2&&r.top>=-2&&r.bottom<=r.height+2&&r.uncovered,JSON.stringify(r));}
   await page.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));const last=await page.locator('.legal-footer>p').boundingBox();assert(last&&last.y>=-2&&last.y+last.height<=await page.evaluate(()=>innerHeight)+2,'Final footer content must be reachable');
-  const target=path.join(CAPTURE,name+'.png');await page.screenshot({path:target,fullPage:false});const png=fs.readFileSync(target);log('footer-reachable',{name,sourceCommit:COMMIT,path:target,sha256:digest(png),width:png.readUInt32BE(16),height:png.readUInt32BE(20)});
+  const target=path.join(CAPTURE,name+'.png');await page.screenshot({path:target,fullPage:false});const png=await pngMetadata(target);log('footer-reachable',{name,sourceCommit:COMMIT,path:target,sha256:png.sha256,width:png.pixelWidth,height:png.pixelHeight});
  }finally{await page.evaluate(p=>window.scrollTo(p.x,p.y),prior);assert(await page.evaluate(e=>document.activeElement===e,focus));await focus.dispose();}
 }
 async function main(){
   assert(process.env.GTA_QA_BROWSER);assert(CAPTURE);browser=await chromium.launch({executablePath:process.env.GTA_QA_BROWSER,headless:true,args:['--disable-crash-reporter']});
   let context=await fresh({colorScheme:'light'}),page=await context.newPage();activePage=page;
+  async function resetIndependentBrowser(){
+    const previous=new Set(browserOwnedPids());await context.close();await browser.close();
+    const deadline=Date.now()+3000;let remaining;
+    do{for(const pid of browserOwnedPids())previous.add(pid);remaining=[...previous].filter(pid=>fs.existsSync('/proc/'+pid));if(!remaining.length)break;await new Promise(resolve=>setTimeout(resolve,50));}while(Date.now()<deadline);
+    assert.deepEqual(remaining,[],'Prior owned browser processes must fully exit before the next browser');log('browser-release-confirmed',{remainingOwnedPids:remaining.length});
+    browser=await chromium.launch({executablePath:process.env.GTA_QA_BROWSER,headless:true,args:['--disable-crash-reporter']});context=await fresh({colorScheme:'light'});page=await context.newPage();activePage=page;log('independent-browser-reset',{surface,mode});
+  }
   await test(`${surface}-${mode} immutable preview`,async()=>{const r=await context.request.get(BASE+'/');assert(r.ok());assert(r.headers()['x-robots-tag']?.toLowerCase().includes('noindex'));const m=await(await context.request.get(BASE+'/hosting-release.json')).json();assert.equal(m.sourceCommit,COMMIT);assert.equal(m.nativeFeedSha256,NATIVE);});
   await test(`${surface}-${mode} actual list matrix and clear gap`,async()=>{
     await actualListReady(page);
     for(const width of [320,390,768,1440]){
+      if(width!==320){await resetIndependentBrowser();await actualListReady(page);}
       await page.setViewportSize({width,height:1000});await filters(page,false);const label=`${surface}-${width}-${mode}`;
       if(width===320)await rangeClampRegression(page);
       const result=await geometry(page,label);assert.equal(result.checkboxCount,8);assert.equal(await page.locator('.oe-map-shell').count(),0);
@@ -337,12 +356,12 @@ async function main(){
     }
   });
   await test(`${surface}-${mode} computed font200 list reflow`,async()=>{
-    for(const width of [320,390]){await page.setViewportSize({width,height:844});await actualListReady(page);const enlarged=await enlargeFonts(page);log('computed-font200',{surface,mode,width,...enlarged});assert(enlarged.samples.length);for(const row of enlarged.samples)assert(Math.abs(row.after/row.before-2)<0.01,JSON.stringify(row));const label=`${surface}-${width}-${mode}-font200`;await geometry(page,label);await capture(page,label);await viewportSectionCapture(page,'.scoped-saved-filters',label+'-presets');await viewportSectionCapture(page,'.accessibility-filter',label+'-support');}
+    for(const width of [320,390]){await resetIndependentBrowser();await page.setViewportSize({width,height:844});await actualListReady(page);const enlarged=await enlargeFonts(page);log('computed-font200',{surface,mode,width,...enlarged});assert(enlarged.samples.length);for(const row of enlarged.samples)assert(Math.abs(row.after/row.before-2)<0.01,JSON.stringify(row));const label=`${surface}-${width}-${mode}-font200`;await geometry(page,label);await capture(page,label);await viewportSectionCapture(page,'.scoped-saved-filters',label+'-presets');await viewportSectionCapture(page,'.accessibility-filter',label+'-support');}
   });
   await test(`${surface}-${mode} real support and scoped preset interactions`,async()=>{
     // This independent interaction case starts with no saved filters; release the
     // screenshot-heavy browser first so memory cannot accumulate across cases.
-    await context.close();await browser.close();browser=await chromium.launch({executablePath:process.env.GTA_QA_BROWSER,headless:true,args:['--disable-crash-reporter']});context=await fresh({colorScheme:'light'});page=await context.newPage();activePage=page;
+    await resetIndependentBrowser();
     await page.setViewportSize({width:390,height:844});await actualListReady(page);
     const checks=page.locator('.accessibility-filter input[type=checkbox]');assert.equal(await checks.count(),8);for(let i=0;i<8;i++)assert.equal(await checks.nth(i).isChecked(),false);
     const resultCount=async()=>Number((await page.locator('.oe-result-toolbar > p strong').innerText()).replace(/\D/g,''));
@@ -377,4 +396,4 @@ async function main(){
   await footerReachable(page,`${surface}-${mode}-footer-real`);
   const final=await(await context.request.get(BASE+'/hosting-release.json')).json();assert.equal(final.sourceCommit,COMMIT);assert.equal(final.nativeFeedSha256,NATIVE);assert.deepEqual(globalPageErrors,[]);fs.writeFileSync(path.join(CAPTURE,'mandatory-visual-reviews.json'),JSON.stringify({sourceCommit:COMMIT,surface,mode,visualAcceptance:false,pendingVisualReviews},null,2));log('C-SCENE-COMPLETE',{surface,mode,passedCases:passed.length,sourceCommit:COMMIT,humanVisualReviewComplete:false,visualAcceptance:false,mapCoverageClaim:false});await context.close();
 }
-main().catch(async error=>{log('FIRST-FAILURE',{surface,mode,message:error.message,stack:error.stack,passedCases:passed});if(activePage&&!activePage.isClosed()){for(const fullPage of [false,true]){try{const name=fullPage?'FAILURE-fullpage':'FAILURE-viewport',target=path.join(CAPTURE,name+'.png');await activePage.screenshot({path:target,fullPage});const png=fs.readFileSync(target);log('failure-capture',{name,path:target,sha256:digest(png),pixelWidth:png.readUInt32BE(16),pixelHeight:png.readUInt32BE(20)});}catch(e){log('failure-capture-error',{message:e.message});}}}process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();});
+main().catch(async error=>{log('FIRST-FAILURE',{surface,mode,message:error.message,stack:error.stack,passedCases:passed});if(activePage&&!activePage.isClosed()){for(const fullPage of [false,true]){try{const name=fullPage?'FAILURE-fullpage':'FAILURE-viewport',target=path.join(CAPTURE,name+'.png');await activePage.screenshot({path:target,fullPage});const png=await pngMetadata(target);log('failure-capture',{name,path:target,sha256:png.sha256,pixelWidth:png.pixelWidth,pixelHeight:png.pixelHeight});}catch(e){log('failure-capture-error',{message:e.message});}}}process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();});
