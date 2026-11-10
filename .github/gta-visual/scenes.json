@@ -1,0 +1,154 @@
+{
+  "home-saved-dark-320-font200": {
+    "script": "run-home-saved-viewport.cjs",
+    "args": [],
+    "scope": "Home saved filters dark320 font200 real viewport plus actual footer reachability",
+    "family": "viewport",
+    "completionEvent": "SAVED-REAL-VIEWPORT-SUPPLEMENT-COMPLETE",
+    "sourceCase": null,
+    "behaviorCases": [],
+    "viewportSection": "home-320-dark-font200-saved-real",
+    "scriptSHA256": "1296c6bf11d8908ed0fbb1ecf1e8efb24726a6ecbfcb04f682e6aaf7ccac2277"
+  },
+  "hub-support-dark-320-font200": {
+    "script": "run-hub-support-viewport.cjs",
+    "args": [],
+    "scope": "Student hub support dark320 font200 real viewport plus actual footer reachability",
+    "family": "viewport",
+    "completionEvent": "SUPPORT-REAL-VIEWPORT-SUPPLEMENT-COMPLETE",
+    "sourceCase": null,
+    "behaviorCases": [],
+    "viewportSection": "hub-320-dark-font200-support-real",
+    "scriptSHA256": "0487d840511a0e8395a172495408a2fa63fd0acba024c8158720d14ec0b9c197"
+  },
+  "c-browse-light": {
+    "script": "run-c-scene.cjs",
+    "args": [
+      "browse",
+      "light"
+    ],
+    "scope": "browse actual list light filters and presets",
+    "family": "C",
+    "completionEvent": "C-SCENE-COMPLETE",
+    "sourceCase": "browse-light immutable preview",
+    "behaviorCases": [
+      "browse-light actual list matrix and clear gap",
+      "browse-light computed font200 list reflow",
+      "browse-light real support and scoped preset interactions",
+      "browse-light actual RTL filter reflow"
+    ],
+    "viewportSection": null,
+    "scriptSHA256": "9966185a06c067e77ce9a1b0d132e6f3f550ddbaba0d130dcefbec8cfb63cf14"
+  },
+  "c-browse-dark": {
+    "script": "run-c-scene.cjs",
+    "args": [
+      "browse",
+      "dark"
+    ],
+    "scope": "browse actual list dark filters and presets",
+    "family": "C",
+    "completionEvent": "C-SCENE-COMPLETE",
+    "sourceCase": "browse-dark immutable preview",
+    "behaviorCases": [
+      "browse-dark actual list matrix and clear gap",
+      "browse-dark computed font200 list reflow",
+      "browse-dark real support and scoped preset interactions",
+      "browse-dark actual RTL filter reflow"
+    ],
+    "viewportSection": null,
+    "scriptSHA256": "9966185a06c067e77ce9a1b0d132e6f3f550ddbaba0d130dcefbec8cfb63cf14"
+  },
+  "c-teen-light": {
+    "script": "run-c-scene.cjs",
+    "args": [
+      "teen",
+      "light"
+    ],
+    "scope": "teen actual list light filters and presets",
+    "family": "C",
+    "completionEvent": "C-SCENE-COMPLETE",
+    "sourceCase": "teen-light immutable preview",
+    "behaviorCases": [
+      "teen-light actual list matrix and clear gap",
+      "teen-light computed font200 list reflow",
+      "teen-light real support and scoped preset interactions",
+      "teen-light actual RTL filter reflow"
+    ],
+    "viewportSection": null,
+    "scriptSHA256": "9966185a06c067e77ce9a1b0d132e6f3f550ddbaba0d130dcefbec8cfb63cf14"
+  },
+  "c-teen-dark": {
+    "script": "run-c-scene.cjs",
+    "args": [
+      "teen",
+      "dark"
+    ],
+    "scope": "teen actual list dark filters and presets",
+    "family": "C",
+    "completionEvent": "C-SCENE-COMPLETE",
+    "sourceCase": "teen-dark immutable preview",
+    "behaviorCases": [
+      "teen-dark actual list matrix and clear gap",
+      "teen-dark computed font200 list reflow",
+      "teen-dark real support and scoped preset interactions",
+      "teen-dark actual RTL filter reflow"
+    ],
+    "viewportSection": null,
+    "scriptSHA256": "9966185a06c067e77ce9a1b0d132e6f3f550ddbaba0d130dcefbec8cfb63cf14"
+  },
+  "beta-landing": {
+    "script": "run-beta-scene.cjs",
+    "args": [
+      "landing"
+    ],
+    "scope": "beta-landing actual full-page viewport coverage and interactions",
+    "family": "beta",
+    "completionEvent": "BETA-SCENE-COMPLETE",
+    "sourceCase": "beta-landing immutable preview",
+    "behaviorCases": [
+      "beta-landing light 320 font100",
+      "beta-landing light 390 font100",
+      "beta-landing light 768 font100",
+      "beta-landing light 1440 font100",
+      "beta-landing light 320 font200",
+      "beta-landing light 390 font200",
+      "beta-landing dark 320 font100",
+      "beta-landing dark 390 font100",
+      "beta-landing dark 768 font100",
+      "beta-landing dark 1440 font100",
+      "beta-landing dark 320 font200",
+      "beta-landing dark 390 font200",
+      "beta-landing pointer keyboard and navigation"
+    ],
+    "viewportSection": null,
+    "scriptSHA256": "b676e7b464327b1900ab2e1ffc36fd3fb90326dbcd70c46af637b43146fa4660"
+  },
+  "beta-ios": {
+    "script": "run-beta-scene.cjs",
+    "args": [
+      "ios"
+    ],
+    "scope": "beta-ios actual full-page viewport coverage and interactions",
+    "family": "beta",
+    "completionEvent": "BETA-SCENE-COMPLETE",
+    "sourceCase": "beta-ios immutable preview",
+    "behaviorCases": [
+      "beta-ios light 320 font100",
+      "beta-ios light 390 font100",
+      "beta-ios light 768 font100",
+      "beta-ios light 1440 font100",
+      "beta-ios light 320 font200",
+      "beta-ios light 390 font200",
+      "beta-ios dark 320 font100",
+      "beta-ios dark 390 font100",
+      "beta-ios dark 768 font100",
+      "beta-ios dark 1440 font100",
+      "beta-ios dark 320 font200",
+      "beta-ios dark 390 font200",
+      "beta-ios pointer keyboard and navigation"
+    ],
+    "viewportSection": null,
+    "scriptSHA256": "b676e7b464327b1900ab2e1ffc36fd3fb90326dbcd70c46af637b43146fa4660"
+  }
+}
