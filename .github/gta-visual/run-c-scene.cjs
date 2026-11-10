@@ -95,6 +95,22 @@ async function privacy(page) {
   for (const key of ['accessSupport', 'youthCriteria', 'categories', 'includeOnRequest']) assert(!url.searchParams.has(key), key + ' must stay local');
   assert(!/sign-language|support-person|hearing-captioning/.test(url.search));
 }
+function clampedRangeDuplicate(a,b){
+ const eps=2,inside=(r,p)=>r.left>=p.left-eps&&r.right<=p.right+eps&&r.top>=p.top-eps&&r.bottom<=p.bottom+eps;
+ const contains=(x,y)=>x.left<=y.left+eps&&x.right>=y.right-eps&&x.top<=y.top+eps&&x.bottom>=y.bottom-eps;
+ return Number.isInteger(a.nodeIndex)&&a.nodeIndex===b.nodeIndex&&a.parentSelector===b.parentSelector&&a.lineClamp>0&&a.lineClamp===b.lineClamp&&a.clipHidden&&b.clipHidden&&a.normalLeading&&b.normalLeading&&Math.abs(a.top-b.top)<=eps&&Math.abs(a.bottom-b.bottom)<=eps&&(Math.abs(a.left-b.left)<=eps||Math.abs(a.right-b.right)<=eps)&&(contains(a,b)||contains(b,a))&&inside(a,a.parentBox)&&inside(b,b.parentBox);
+}
+async function rangeClampRegression(page){
+ const collect=(container)=>{const walker=document.createTreeWalker(container,NodeFilter.SHOW_TEXT),out=[];let node,index=0;while((node=walker.nextNode())){if(!node.textContent.trim())continue;const id=index++,parent=node.parentElement,style=getComputedStyle(parent),box=parent.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(node);for(const r of range.getClientRects())if(r.width&&r.height)out.push({left:r.left,right:r.right,top:r.top,bottom:r.bottom,nodeIndex:id,parentSelector:parent.id||parent.tagName,lineClamp:parseInt(style.webkitLineClamp)||0,clipHidden:style.overflowX==='hidden'&&style.overflowY==='hidden',normalLeading:parseFloat(style.lineHeight)>=parseFloat(style.fontSize),parentBox:{left:box.left,right:box.right,top:box.top,bottom:box.bottom}});}return out;};
+ const actual=[];for(const summary of await page.locator('.oe-summary').all())actual.push(await summary.evaluate(collect));
+ let actualPairs=0;for(const rows of actual)for(let i=0;i<rows.length;i++)for(let j=i+1;j<rows.length;j++)if(clampedRangeDuplicate(rows[i],rows[j]))actualPairs++;
+ const scratch=await page.context().newPage();try{
+  await scratch.setContent('<style>p{position:relative;width:240px;height:70px;font:15px/25.5px Arial}#collision span{position:absolute;left:0;top:0;width:200px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}#plain{height:auto;display:block;overflow:visible}</style><p id="collision"><span id="a">Actual overlap</span><span id="b">Actual overlap</span></p><p id="plain">A long description wraps normally over several lines without a clamp. A long description wraps normally over several lines without a clamp.</p>');
+  const bad=await scratch.locator('#collision').evaluate(collect);assert.equal(bad.length,2);assert(Math.min(bad[0].right,bad[1].right)-Math.max(bad[0].left,bad[1].left)>2);assert(Math.min(bad[0].bottom,bad[1].bottom)-Math.max(bad[0].top,bad[1].top)>2);assert(!clampedRangeDuplicate(bad[0],bad[1]),'Genuinely overlapping separate DOM text nodes remain hard failures');
+  const plain=await scratch.locator('#plain').evaluate(collect);for(let i=0;i<plain.length;i++)for(let j=i+1;j<plain.length;j++)assert(!clampedRangeDuplicate(plain[i],plain[j]));
+  log('range-clamp-regression',{actualSourceDuplicatePairs:actualPairs,actualPaintedOverlapTwoNodesNotPromoted:true,unclampedTextNotPromoted:true,productDOMUnmodified:true});
+ }finally{await scratch.close();}
+}
 async function geometry(page, label) {
   const result = await page.evaluate(() => {
     const visible = e => { const r = e.getBoundingClientRect(), s = getComputedStyle(e); return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden'; };
@@ -112,8 +128,8 @@ async function geometry(page, label) {
     }
     for (const e of document.querySelectorAll('h1,h2,h3,h4,p,label,legend,button,dt,dd')) {
       if (!visible(e) || e.closest('.sr-only,.oe-sr-only,svg,.gta-artwork')) continue;
-      const walker = document.createTreeWalker(e, NodeFilter.SHOW_TEXT), fragments = []; let node;
-      while ((node = walker.nextNode())) { if (!node.textContent.trim() || node.parentElement?.closest('svg,[aria-hidden=true],.sr-only,.oe-sr-only')) continue; const range = document.createRange(); range.selectNodeContents(node); for (const r of range.getClientRects()) if (r.width && r.height) fragments.push({x:r.x,y:r.y,left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height,text:node.textContent,parentSelector:selectorFor(node.parentElement)}); }
+      const walker = document.createTreeWalker(e, NodeFilter.SHOW_TEXT), fragments = []; let node,nodeIndex=0;
+      while ((node = walker.nextNode())) { if (!node.textContent.trim() || node.parentElement?.closest('svg,[aria-hidden=true],.sr-only,.oe-sr-only')) continue; const id=nodeIndex++,parentStyle=getComputedStyle(node.parentElement),parentRect=node.parentElement.getBoundingClientRect();const range = document.createRange(); range.selectNodeContents(node); for (const r of range.getClientRects()) if (r.width && r.height) fragments.push({nodeIndex:id,lineClamp:parseInt(parentStyle.webkitLineClamp)||0,clipHidden:parentStyle.overflowX==='hidden'&&parentStyle.overflowY==='hidden',normalLeading:parseFloat(parentStyle.lineHeight)>=parseFloat(parentStyle.fontSize),parentBox:{left:parentRect.left,right:parentRect.right,top:parentRect.top,bottom:parentRect.bottom},x:r.x,y:r.y,left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height,text:node.textContent,parentSelector:selectorFor(node.parentElement)}); }
       if (e.clientWidth && e.scrollWidth > e.clientWidth + epsilon) {
         const finding = {kind: fragments.length ? 'text-horizontal-clipping' : 'nontext-scroll-overflow-needs-visual-review', ...describe(e), fragments};
         // An icon-only button still receives viewport/sibling bounds checks and a
@@ -142,6 +158,9 @@ async function geometry(page, label) {
     for (const row of checkbox) if (row.labelBox.height < 47.5 || Math.abs(row.inputBox.width-20) > 1 || Math.abs(row.inputBox.height-20) > 1) issues.push({ kind: 'checkbox-target-size', ...row });
     return { viewport: innerWidth, issues, metricWarnings, checkboxCount: checkbox.length, pathwayBoxes: [...document.querySelectorAll('.hs-pathways li')].filter(visible).map(box) };
   });
+  const clampArtifacts=result.issues.filter(issue=>issue.kind==='same-line-text-fragment-overlap'&&issue.fragments?.length===2&&clampedRangeDuplicate(issue.fragments[0],issue.fragments[1]));
+  result.issues=result.issues.filter(issue=>!clampArtifacts.includes(issue));
+  result.metricWarnings.push(...clampArtifacts.map(issue=>({...issue,kind:'clamped-single-node-duplicate-range-needs-original-PNG-review',note:'A single normally spaced, explicitly clamped text node exposes two contained rectangles for its ellipsized last line. Original image inspection remains mandatory.'})));
   log('geometry', { label, ...result });
   // Preserve readable original evidence before a hard assertion stops the run.
   // This adds diagnostics only; the strict result.issues assertion stays below.
@@ -291,6 +310,7 @@ async function main(){
     await actualListReady(page);
     for(const width of [320,390,768,1440]){
       await page.setViewportSize({width,height:1000});await filters(page,false);const label=`${surface}-${width}-${mode}`;
+      if(width===320)await rangeClampRegression(page);
       const result=await geometry(page,label);assert.equal(result.checkboxCount,8);assert.equal(await page.locator('.oe-map-shell').count(),0);
       const gap=await page.locator('.oe-clear-support').evaluate(e=>({clearBottom:e.getBoundingClientRect().bottom,nextTop:e.nextElementSibling?.getBoundingClientRect().top,margin:getComputedStyle(e).marginBlockEnd}));
       log('clear-support-gap',{label,...gap});assert(gap.nextTop-gap.clearBottom>=19.5,'Clear support and following Category group retain20px gap');
