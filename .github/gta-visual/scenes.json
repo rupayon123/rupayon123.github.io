@@ -1,16 +1,16 @@
 {
-  "rtl-browse-light": {
+  "rtl-browse-dark": {
     "script": "run-rtl-layout-only.cjs",
     "args": [
       "browse",
-      "light"
+      "dark"
     ],
-    "scope": "Standalone Browse-light original provider copy and RTL at verified 200%; other scenes unrun",
+    "scope": "Standalone Browse-dark original provider copy and RTL at verified 200%; other scenes unrun",
     "family": "RTL",
     "completionEvent": "C-SCENE-COMPLETE",
-    "sourceCase": "browse-light immutable preview",
+    "sourceCase": "browse-dark immutable preview",
     "behaviorCases": [
-      "browse-light actual RTL filter reflow"
+      "browse-dark actual RTL filter reflow"
     ],
     "viewportSection": null,
     "scriptSHA256": "e275660513822659151d98187ba1151c3d290463cab16de26cde9799d18a040c"
