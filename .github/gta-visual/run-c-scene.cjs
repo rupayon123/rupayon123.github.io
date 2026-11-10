@@ -218,7 +218,7 @@ async function axe(page,label){
     const restored=await state();const sameElement=await page.evaluate(element=>document.activeElement===element,previous);
     log('axe-focus-scroll-restoration',{label,before,afterAudit,restored,sameElement,dedicatedKeyboardFocusChecksUnchanged:true});
     assert(sameElement,'Restore exact pre-audit activeElement');assert.equal(restored.scrollX,before.scrollX);assert.equal(restored.scrollY,before.scrollY);
-    log('axe',{label,violations:result.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.length}))});assert.equal(result.violations.length,0,label);
+    log('axe',{label,violations:result.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.length}))});assert.equal(result.violations.length,0,JSON.stringify({label,violations:result.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary})).slice(0,3)}))}));
   } finally {await previous.dispose();}
 }
 
