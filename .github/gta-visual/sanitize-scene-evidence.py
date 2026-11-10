@@ -77,6 +77,14 @@ if receipt['passed']:
   required=['-320-rtl-font200-sort','-320-rtl-font200-filters','-320-rtl-font200-cards','-320-rtl-font200-directory']
   names={e['name'] for e in coverage}
   assert all('-'.join(SCENE['args'])+suffix in names for suffix in required)
+ elif SCENE['family']=='LAYOUT':
+  assert cases_completed==1 and source_checks_completed==1 and completion[0]['passedCases']==2
+  assert completion[0]['surface']==SCENE['args'][0] and completion[0]['mode']==SCENE['args'][1]
+  assert completion[0]['width']==int(SCENE['args'][2]) and completion[0]['scale']==int(SCENE['args'][3])
+  label='-'.join(SCENE['args'][:2])+'-'+SCENE['args'][2]+'-font'+SCENE['args'][3]
+  names={e['name'] for e in coverage}
+  assert all(label+suffix in names for suffix in ['-filters','-cards','-directory'])
+  if SCENE['args'][3]=='200':assert len([e for e in events if e.get('event')=='layout-font200' and e.get('titles',0)>0 and e.get('summaries',0)>0])==1
  elif SCENE['family']=='viewport':
   assert len(coverage)==1 and coverage[0]['name']==SCENE['viewportSection']
   frames=[e for e in events if e.get('event')=='real-viewport-section-frame' and e.get('name')==SCENE['viewportSection']]
