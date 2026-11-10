@@ -1,138 +1,111 @@
-name: Check current GTA frontend visuals
+name: Preview current GTA frontend
+
+# Isolated review deployment; no production or GitHub Pages publication.
 on:
   push:
     branches: [codex/frontend-preview-20261110]
     paths: [.github/workflows/publish.yml]
+
 permissions:
   contents: read
+
 concurrency:
   group: gta-reviewed-preview
   cancel-in-progress: false
+
 jobs:
-  visuals:
-    if: github.repository == 'rupayon123/rupayon123.github.io' && github.event.repository.private == false
+  preview:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: app-source
     env:
-      GTA_QA_BASE_URL: https://6c30366f.gta-free-stem.pages.dev
-      GTA_QA_SOURCE_COMMIT: 3fd56dfbb14183eeafbd342a2d16e11397712fd9
-      GTA_QA_NATIVE_SHA256: d7c990ac47516423815199ab04026cd636b64be67c95cad01992838f1c59d004
-      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
-      PUPPETEER_SKIP_DOWNLOAD: 'true'
-      NODE_OPTIONS: --max-old-space-size=512
+      APP_COMMIT: 20be11f8fd10d7a1a1e6abb7dde9a1efe0102154
+      EXPECTED_NATIVE_FEED_SHA256: d7c990ac47516423815199ab04026cd636b64be67c95cad01992838f1c59d004
+      PREVIEW_BRANCH: review-frontend-20261110
       NEXT_TELEMETRY_DISABLED: '1'
-      WRANGLER_SEND_METRICS: 'false'
+      NODE_OPTIONS: --max-old-space-size=2048
     steps:
-      - name: Require the one reviewed source revision
+      - name: Require an immutable reviewed source
+        working-directory: ${{ github.workspace }}
+        shell: bash
         run: |
           set -euo pipefail
           test "$GITHUB_EVENT_NAME" = push
           test "$GITHUB_REF_NAME" = codex/frontend-preview-20261110
-          test "${{ github.event.before }}" = 3a1bbbf37453d4ac8cac61eb458446820aa4e5a8
-      - name: Check out the exact QA source
+          test "${{ github.event.before }}" = 001fce16976fff77741e3dc8f7c384ab34b45788
+          [[ "$APP_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          test "$PREVIEW_BRANCH" != main
+      - name: Check out the exact preview verification source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           ref: ${{ github.sha }}
+          path: preview-ops
           persist-credentials: false
-      - name: Set up existing Node without persistent caches
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+      - name: Check out reviewed application source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: rupayon123/gta-free-stem-opportunities
+          path: app-source
+          ref: 20be11f8fd10d7a1a1e6abb7dde9a1efe0102154
+          persist-credentials: false
+      - name: Verify checkout and exclude temporary QA routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APP_COMMIT"
+          test ! -e app/__frontend-qa
+      - name: Set up Node without a persistent cache
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '22'
           package-manager-cache: false
-      - name: Install only the reviewed locked browser-test dependencies
-        working-directory: .github/gta-visual
-        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Check source contracts
+        run: npm run qa
+      - name: Build the reviewed static website
+        run: npm run build:github-pages
         env:
-          NPM_CONFIG_CACHE: ${{ runner.temp }}/gta-visual-npm-cache
-      - name: Ensure real Japanese glyph coverage before screenshot checks
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
-          python3 - <<'PYFONT'
-          import subprocess
-          for code in [0x63A2,0x7A76]:
-              charset=subprocess.check_output(['fc-match','-f','%{charset}',':charset='+format(code,'x')],text=True)
-              ranges=[part.split('-') for part in charset.split()]
-              assert any(int(r[0],16)<=code<=int(r[-1],16) for r in ranges),'Missing actual Japanese glyph coverage'
-          print('Verified Japanese test label glyphs are present in runner fonts.')
-          PYFONT
-      - name: Verify immutable preview source before opening a browser
-        run: python3 .github/gta-visual/verify-preview.py "$GTA_QA_BASE_URL" "$GTA_QA_SOURCE_COMMIT" "$GTA_QA_NATIVE_SHA256"
-      - name: Run the eight guarded browser scenes sequentially
-        id: browser
-        continue-on-error: true
-        run: python3 .github/gta-visual/run-all-scenes.py
-      - name: Allow only released, sanitized original evidence
-        if: always() && steps.browser.outcome != 'skipped'
-        id: evidence
-        run: |
-          python3 - <<'PYSAFE'
-          import json,os
-          from pathlib import Path
-          root=Path(os.environ['RUNNER_TEMP'])/'gta-all-visual-evidence'
-          manifest=json.loads((root/'evidence.json').read_text())
-          assert manifest['safeToPublishEvidence'],'All browser processes must be released before account credentials are used'
-          assert manifest['appSourceCommit']==os.environ['GTA_QA_SOURCE_COMMIT']
-          assert manifest['nativeFeedSha256']==os.environ['GTA_QA_NATIVE_SHA256']
-          files=[p for p in root.rglob('*') if p.is_file()]
-          assert len(files)<=1000 and all(not p.is_symlink() for p in root.rglob('*'))
-          assert all(p.suffix in ['.png','.json'] or p.name in ['_headers','robots.txt'] for p in files)
-          with open(os.environ['GITHUB_OUTPUT'],'a') as output:output.write('publish=true\n')
-          print(json.dumps({'releasedAndSanitized':True,'files':len(files),'browserChecksPassed':manifest['browserChecksPassed'],'visualAcceptance':False}))
-          PYSAFE
-      - name: Verify the existing evidence-only Cloudflare destination
-        if: always() && steps.evidence.outputs.publish == 'true'
-        id: destination
+          GTA_SOURCE_COMMIT: 20be11f8fd10d7a1a1e6abb7dde9a1efe0102154
+      - name: Confirm the preview cannot target production
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          python3 - <<'PYDEST'
-          import json,os,urllib.request
-          request=urllib.request.Request('https://api.cloudflare.com/client/v4/accounts/780712be4fc9ab0b0fc581c09735a77b/pages/projects/gta-free-stem',headers={'Authorization':'Bearer '+os.environ['CLOUDFLARE_API_TOKEN']})
-          with urllib.request.urlopen(request,timeout=30) as response:result=json.load(response)
-          assert result['success'] and result['result']['name']=='gta-free-stem' and result['result']['production_branch']=='main'
-          print('Verified existing project; only the separate evidence preview will be deployed.')
-          PYDEST
-      - name: Publish original PNGs and metadata to the separate evidence preview
-        if: always() && steps.destination.outcome == 'success'
+          python3 - <<'PY'
+          import json, os, urllib.request
+          request = urllib.request.Request(
+              'https://api.cloudflare.com/client/v4/accounts/780712be4fc9ab0b0fc581c09735a77b/pages/projects/gta-free-stem',
+              headers={'Authorization': 'Bearer ' + os.environ['CLOUDFLARE_API_TOKEN']})
+          with urllib.request.urlopen(request, timeout=30) as response:
+              project = json.load(response)
+          assert project['success']
+          assert project['result']['production_branch'] == 'main'
+          assert os.environ['PREVIEW_BRANCH'] != 'main'
+          print('Verified: the review deployment is a non-production branch.')
+          PY
+      - name: Deploy only the non-indexed review branch
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.152.0 pages deploy out --project-name=gta-free-stem --branch="$PREVIEW_BRANCH" --commit-hash="$APP_COMMIT" | tee "$RUNNER_TEMP/gta-preview-deploy.log"
+          python3 - <<'PYURL'
+          import json,os,re
+          from pathlib import Path
+          raw=(Path(os.environ['RUNNER_TEMP'])/'gta-preview-deploy.log').read_text()
+          urls=set(re.findall(r'https://[a-f0-9]{8,}\.gta-free-stem\.pages\.dev',raw))
+          assert len(urls)==1,urls
+          url=next(iter(urls))
+          with open(os.environ['GITHUB_ENV'],'a') as output:
+              output.write('GTA_PREVIEW_IMMUTABLE_URL='+url+'\n')
+          print(json.dumps({'immutablePreviewUrl':url,'sourceCommit':os.environ['APP_COMMIT'],'productionDeployment':False}))
+          PYURL
         env:
           CLOUDFLARE_ACCOUNT_ID: 780712be4fc9ab0b0fc581c09735a77b
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          NPM_CONFIG_CACHE: ${{ runner.temp }}/gta-evidence-npm-cache
-        run: |
-          set -euo pipefail
-          mkdir "$RUNNER_TEMP/gta-clean-evidence-deploy"
-          cd "$RUNNER_TEMP/gta-clean-evidence-deploy"
-          test ! -e wrangler.toml
-          test ! -e functions
-          npx --yes wrangler@4.152.0 pages deploy "$RUNNER_TEMP/gta-all-visual-evidence" --project-name=gta-free-stem --branch=review-evidence-20261110 --commit-hash="$GTA_QA_SOURCE_COMMIT" | tee "$RUNNER_TEMP/gta-evidence-deploy.log"
-          python3 - <<'PYURL'
-          import json,os,re,subprocess
-          from pathlib import Path
-          raw=(Path(os.environ['RUNNER_TEMP'])/'gta-evidence-deploy.log').read_text()
-          urls=set(re.findall(r'https://[a-f0-9]{8,}\.gta-free-stem\.pages\.dev',raw));assert len(urls)==1
-          url=next(iter(urls))
-          response=subprocess.run(['curl','--fail','--silent','--show-error','--max-time','30',url+'/evidence.json'],check=True,capture_output=True,text=True)
-          result=json.loads(response.stdout)
-          assert result['appSourceCommit']==os.environ['GTA_QA_SOURCE_COMMIT'] and result['nativeFeedSha256']==os.environ['GTA_QA_NATIVE_SHA256']
-          print(json.dumps({'originalEvidenceUrl':url,'browserChecksPassed':result['browserChecksPassed'],'visualAcceptance':False,'scenesExecuted':result['scenesExecuted']}))
-          PYURL
-      - name: Keep failures visible and require original screenshot review
-        if: always()
-        run: |
-          python3 - <<'PYGATE'
-          import json,os
-          from pathlib import Path
-          root=Path(os.environ['RUNNER_TEMP'])/'gta-all-visual-evidence'
-          receipt=json.loads((root/'evidence.json').read_text())
-          assert receipt['expectedScenes']==receipt['scenesExecuted']==8
-          assert receipt['browserChecksPassed'] and receipt['safeToPublishEvidence']
-          assert receipt['appSourceCommit']==os.environ['GTA_QA_SOURCE_COMMIT']
-          assert receipt['nativeFeedSha256']==os.environ['GTA_QA_NATIVE_SHA256']
-          for scene in receipt['scenes']:
-              detail=json.loads((root/scene['manifest']).read_text())
-              assert scene['testStatus']==detail['testStatus']=='passed'
-              assert detail['resource']['releaseConfirmed']
-          print('All 8 scene receipts passed; zero unrun; browser cleanup confirmed.')
-          PYGATE
-          echo 'Browser checks passed. Original PNG inspection is still required; no production release is implied.'
+          WRANGLER_SEND_METRICS: 'false'
+      - name: Verify immutable preview source, native data and indexing protection
+        run: python3 "$GITHUB_WORKSPACE/preview-ops/.github/gta-visual/verify-preview.py" "$GTA_PREVIEW_IMMUTABLE_URL" "$APP_COMMIT" "$EXPECTED_NATIVE_FEED_SHA256"
+
