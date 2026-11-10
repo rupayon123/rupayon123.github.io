@@ -108,7 +108,8 @@ async function enlargeFonts(page) {
     for (const { e, before } of rows) e.style.setProperty('font-size', before * 2 + 'px', 'important');
     const immediate=rows.map(({e})=>snapshot(e));
     const activeFontTransitionsBeforeSettle=document.getAnimations().filter(a=>a.effect?.getKeyframes().some(f=>typeof f.fontSize==='string')).length;
-    await Promise.allSettled(document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished));
+    const relevantAnimations=document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity && a.effect?.target instanceof Element && a.effect.target.checkVisibility({visibilityProperty:true,contentVisibilityAuto:true}));
+    let settleTimer;try{await Promise.race([Promise.allSettled(relevantAnimations.map(a=>a.finished)),new Promise((_,reject)=>{settleTimer=setTimeout(()=>reject(new Error('Rendered finite animation did not settle within3000ms: '+JSON.stringify(relevantAnimations.filter(a=>a.playState!=='finished').map(a=>({type:a.constructor.name,state:a.playState,properties:a.effect?.getKeyframes().map(f=>Object.keys(f)).flat()})).slice(0,5)))),3000);})]);}finally{clearTimeout(settleTimer);} 
     await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     const diagnostics=rows.map(({e,before,beforeState},index)=>({before,beforeState,immediate:immediate[index],settled:snapshot(e)}));
     const samples = rows.filter(({e}) => e.getClientRects().length > 0 && e.checkVisibility({visibilityProperty:true,contentVisibilityAuto:true})).map(({e,before,beforeState}) => ({ element: e.tagName, selector:beforeState.selector, before, after: parseFloat(getComputedStyle(e).fontSize) }));

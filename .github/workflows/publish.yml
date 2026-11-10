@@ -7,7 +7,7 @@ permissions:
   contents: read
 concurrency:
   group: gta-reviewed-preview
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event.before == '89e9fadbdec5859a63b02443a66b6f4ba0b9a3f6' }}
 jobs:
   visuals:
     if: github.repository == 'rupayon123/rupayon123.github.io' && github.event.repository.private == false
@@ -28,7 +28,21 @@ jobs:
           set -euo pipefail
           test "$GITHUB_EVENT_NAME" = push
           test "$GITHUB_REF_NAME" = codex/frontend-preview-20261110
-          test "${{ github.event.before }}" = ab34d063b78d83fcc22dbf9b2823112e146efec0
+          test "${{ github.event.before }}" = 89e9fadbdec5859a63b02443a66b6f4ba0b9a3f6
+      - name: Confirm the superseded owned visual run is terminal
+        run: |
+          python3 - <<'PYSTOP'
+          import json,time,urllib.request
+          deadline=time.monotonic()+45
+          while True:
+              request=urllib.request.Request('https://api.github.com/repos/rupayon123/rupayon123.github.io/actions/runs/42775783041',headers={'User-Agent':'GTA-frontend-verification'})
+              with urllib.request.urlopen(request,timeout=5) as response:prior=json.load(response)
+              assert prior['head_sha']=='89e9fadbdec5859a63b02443a66b6f4ba0b9a3f6' and prior['head_branch']=='codex/frontend-preview-20261110'
+              if prior['status']=='completed':
+                  print(json.dumps({'supersededRun':42775783041,'status':prior['status'],'conclusion':prior['conclusion']}));break
+              assert time.monotonic()<deadline,'Do not start another browser until the owned superseded run terminates'
+              time.sleep(2)
+          PYSTOP
       - name: Check out the exact QA source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
