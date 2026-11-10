@@ -34,7 +34,7 @@ for key in scenes:
         source = scene_temp / 'gta-public-evidence'
         evidence = json.loads((source / 'evidence.json').read_text())
         shutil.copytree(source, OUT / 'scenes' / key)
-        results.append({'scene': key, 'testStatus': evidence['testStatus'], 'screenshots': len(evidence['screenshots']), 'manifest': 'scenes/' + key + '/evidence.json'})
+        results.append({'scene': key, 'testStatus': evidence['testStatus'], 'screenshots': evidence.get('totalOriginalScreenshots',len(evidence['screenshots'])), 'manifest': 'scenes/' + key + '/evidence.json'})
         print(sanitized.stdout, end='', flush=True)
     else:
         results.append({'scene': key, 'testStatus': 'sanitizer-failed', 'screenshots': 0})

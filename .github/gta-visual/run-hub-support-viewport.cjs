@@ -166,11 +166,11 @@ async function enlargeFonts(page) {
     const snapshot=e=>({selector:selectorFor(e),text:e.textContent?.trim().slice(0,100),connected:e.isConnected,fontSize:getComputedStyle(e).fontSize,font:getComputedStyle(e).font,inlineFontSize:e.style.getPropertyValue('font-size'),inlinePriority:e.style.getPropertyPriority('font-size'),inlineStyle:e.getAttribute('style'),animation:getComputedStyle(e).animationName,transition:getComputedStyle(e).transitionProperty,matchingFontRules:e.tagName==='H1'?[...document.styleSheets].flatMap(sheet=>{try{const out=[];const scan=rules=>{for(const rule of rules){if(rule.selectorText&&e.matches(rule.selectorText)&&(rule.style.fontSize||rule.style.font))out.push({selector:rule.selectorText,fontSize:rule.style.fontSize,fontPriority:rule.style.getPropertyPriority('font-size'),font:rule.style.font});if(rule.cssRules)scan(rule.cssRules);}};scan(sheet.cssRules);return out;}catch{return [];}}):undefined});
     const rows = [...document.querySelectorAll('h1,h2,h3,h4,p,button,input,select,textarea,label,legend,summary,a,li,dt,dd,span')]
       .filter(e => !e.closest('svg,.gta-artwork,.sr-only,.oe-sr-only')).map(e => ({ e, before: parseFloat(getComputedStyle(e).fontSize), beforeState:snapshot(e) }));
-    for (const { e, before } of rows) e.style.fontSize = before * 2 + 'px';
+    for (const { e, before } of rows) e.style.setProperty('font-size', before * 2 + 'px', 'important');
     const immediate=rows.map(({e})=>snapshot(e));
     await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     const diagnostics=rows.map(({e,before,beforeState},index)=>({before,beforeState,immediate:immediate[index],settled:snapshot(e)}));
-    const samples = rows.filter(({e}) => e.matches('h1,.accessibility-check span,.scoped-saved-filters input')).map(({e,before}) => ({ element: e.tagName, before, after: parseFloat(getComputedStyle(e).fontSize) }));
+    const samples = rows.map(({e,before,beforeState}) => ({ element: e.tagName, selector:beforeState.selector, before, after: parseFloat(getComputedStyle(e).fontSize) }));
     return { count: rows.length, samples, diagnostics, fontReadiness:document.fonts.status, actualTwoAnimationFramesWaited:true };
   });
 }

@@ -32,7 +32,16 @@ if captures.exists():
   target=OUT/'screenshots'/source.name;shutil.copyfile(source,target);digest=hashlib.sha256(blob).hexdigest();assert hashlib.sha256(target.read_bytes()).hexdigest()==digest
   total+=len(blob);assert total<=64*1024*1024
   images.append({'file':'screenshots/'+source.name,'sha256':digest,'width':width,'height':height,'bytes':len(blob)})
-assert len(images)<=100
+# Keep each JSON index at the original 100-image/32KiB bound. The complete
+# matrix includes more than 100 originals; retain them in bounded index pages.
+assert len(images)<=400
+index_pages=[]
+for offset in range(100,len(images),100):
+ name='screenshot-index-'+str(offset//100+1)+'.json'
+ page={'schemaVersion':1,'scene':KEY,'appSourceCommit':receipt['sourceCommit'],'nativeFeedSha256':receipt['nativeSHA256'],'screenshots':images[offset:offset+100]}
+ payload=(json.dumps(page,indent=2)+'\n').encode();assert len(payload)<=32768
+ (OUT/name).write_bytes(payload)
+ index_pages.append({'file':name,'sha256':hashlib.sha256(payload).hexdigest(),'count':len(page['screenshots'])})
 events=[]
 for line in (TEMP/'browser-private.log').read_text().splitlines():
  try:
@@ -79,12 +88,12 @@ def public_failure(events):
  if not message:return None
  message=re.sub(r'(?:file://)?/(?:home|tmp|Users)/[^\s"<>]+','[runner-path]',message)
  return message if len(message)<=2000 else message[:160]+'\n[launch arguments omitted]\n'+message[-1800:]
-manifest={'schemaVersion':1,'scene':KEY,'scope':SCENE['scope'],'appSourceCommit':receipt['sourceCommit'],'nativeFeedSha256':receipt['nativeSHA256'],'testStatus':'passed' if receipt['passed'] else 'failed','visualAcceptance':False,'humanScreenshotReviewRequired':True,'platform':'GitHub public standard ubuntu-24.04; preinstalled Google Chrome','platformLimit':'Linux render/font/host-memory results do not establish macOS Brave, native browser zoom or physical device behavior','browserVersion':receipt.get('browserVersion','unavailable'),'dependencies':{'playwright-core':'1.64.1','@axe-core/playwright':'4.14.0','axe-core':'4.14.0'},'harnessSHA256':SCENE['scriptSHA256'],'resource':{k:receipt[k] for k in ['limitKiB','nodeHeapMiB','deadlineSeconds','memoryMetric','minimumHostFreePercent','peakOwnedRSSKiB','elapsedSeconds','releaseConfirmed']},'casesCompleted':cases_completed,'expectedBehaviorCases':len(behavior_cases),'sourceChecksCompleted':source_checks_completed,'sourceVerification':'Pre/post assertions inside immutable scene script','viewportSectionsCompleted':len(coverage),'dialogSectionsCompleted':len(dialog_coverage),'axeViolationCounts':[len(e['violations']) for e in events if e.get('event')=='axe'],'pendingVisualReviewCount':completion[0].get('pendingVisualReviewCount') if completion else None,'screenshots':images,'failureSummary':public_failure(events),'rangeClampRegression':[e for e in events if e.get('event')=='range-clamp-regression']}
+manifest={'schemaVersion':1,'scene':KEY,'scope':SCENE['scope'],'appSourceCommit':receipt['sourceCommit'],'nativeFeedSha256':receipt['nativeSHA256'],'testStatus':'passed' if receipt['passed'] else 'failed','visualAcceptance':False,'humanScreenshotReviewRequired':True,'platform':'GitHub public standard ubuntu-24.04; preinstalled Google Chrome','platformLimit':'Linux render/font/host-memory results do not establish macOS Brave, native browser zoom or physical device behavior','browserVersion':receipt.get('browserVersion','unavailable'),'dependencies':{'playwright-core':'1.64.1','@axe-core/playwright':'4.14.0','axe-core':'4.14.0'},'harnessSHA256':SCENE['scriptSHA256'],'resource':{k:receipt[k] for k in ['limitKiB','nodeHeapMiB','deadlineSeconds','memoryMetric','minimumHostFreePercent','peakOwnedRSSKiB','elapsedSeconds','releaseConfirmed']},'casesCompleted':cases_completed,'expectedBehaviorCases':len(behavior_cases),'sourceChecksCompleted':source_checks_completed,'sourceVerification':'Pre/post assertions inside immutable scene script','viewportSectionsCompleted':len(coverage),'dialogSectionsCompleted':len(dialog_coverage),'axeViolationCounts':[len(e['violations']) for e in events if e.get('event')=='axe'],'pendingVisualReviewCount':completion[0].get('pendingVisualReviewCount') if completion else None,'screenshots':images[:100],'totalOriginalScreenshots':len(images),'additionalScreenshotIndexes':index_pages,'failureSummary':public_failure(events),'rangeClampRegression':[e for e in events if e.get('event')=='range-clamp-regression']}
 text=json.dumps(manifest,indent=2)+'\n';assert len(text.encode())<=32768
 assert '/Users/' not in text and '/home/' not in text and '/tmp/' not in text and 'Bearer ' not in text
 (OUT/'evidence.json').write_text(text)
 (OUT/'_headers').write_text('/*\n  X-Robots-Tag: noindex, nofollow, noarchive\n  Cache-Control: no-store\n')
 (OUT/'robots.txt').write_text('User-agent: *\nDisallow: /\n')
-expected={'evidence.json','_headers','robots.txt'}|{e['file'] for e in images}
+expected={'evidence.json','_headers','robots.txt'}|{e['file'] for e in images}|{e['file'] for e in index_pages}
 actual={str(p.relative_to(OUT)) for p in OUT.rglob('*') if p.is_file()};assert actual==expected
 print(json.dumps({'sanitizedOriginalPNGs':len(images),'totalPNGBytes':total,'status':manifest['testStatus'],'visualAcceptance':False}))
