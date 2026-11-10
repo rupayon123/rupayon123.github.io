@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           test "$GITHUB_EVENT_NAME" = push
           test "$GITHUB_REF_NAME" = codex/frontend-preview-20261110
-          test "${{ github.event.before }}" = c7ec600d28cf8a95dbdc521dce51d1990ecc320a
+          test "${{ github.event.before }}" = 7f6196c380b667838af7c10ee8908730dab01004
       - name: Check out the exact QA source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -44,6 +44,18 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
         env:
           NPM_CONFIG_CACHE: ${{ runner.temp }}/gta-visual-npm-cache
+      - name: Ensure real Japanese glyph coverage before screenshot checks
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          python3 - <<'PYFONT'
+          import subprocess
+          for code in [0x63A2,0x7A76]:
+              charset=subprocess.check_output(['fc-match','-f','%{charset}',':charset='+format(code,'x')],text=True)
+              ranges=[part.split('-') for part in charset.split()]
+              assert any(int(r[0],16)<=code<=int(r[-1],16) for r in ranges),'Missing actual Japanese glyph coverage'
+          print('Verified Japanese test label glyphs are present in runner fonts.')
+          PYFONT
       - name: Verify immutable preview source before opening a browser
         run: python3 .github/gta-visual/verify-preview.py "$GTA_QA_BASE_URL" "$GTA_QA_SOURCE_COMMIT" "$GTA_QA_NATIVE_SHA256"
       - name: Run the eight guarded browser scenes sequentially
@@ -108,5 +120,19 @@ jobs:
       - name: Keep failures visible and require original screenshot review
         if: always()
         run: |
-          test '${{ steps.browser.outcome }}' = success
+          python3 - <<'PYGATE'
+          import json,os
+          from pathlib import Path
+          root=Path(os.environ['RUNNER_TEMP'])/'gta-all-visual-evidence'
+          receipt=json.loads((root/'evidence.json').read_text())
+          assert receipt['expectedScenes']==receipt['scenesExecuted']==8
+          assert receipt['browserChecksPassed'] and receipt['safeToPublishEvidence']
+          assert receipt['appSourceCommit']==os.environ['GTA_QA_SOURCE_COMMIT']
+          assert receipt['nativeFeedSha256']==os.environ['GTA_QA_NATIVE_SHA256']
+          for scene in receipt['scenes']:
+              detail=json.loads((root/scene['manifest']).read_text())
+              assert scene['testStatus']==detail['testStatus']=='passed'
+              assert detail['resource']['releaseConfirmed']
+          print('All 8 scene receipts passed; zero unrun; browser cleanup confirmed.')
+          PYGATE
           echo 'Browser checks passed. Original PNG inspection is still required; no production release is implied.'

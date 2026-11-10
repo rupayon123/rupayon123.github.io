@@ -19,7 +19,7 @@
     "sourceCase": null,
     "behaviorCases": [],
     "viewportSection": "hub-320-dark-font200-support-real",
-    "scriptSHA256": "e3e011a373bfc3ca7de029bb16b274fee9ae0df1ae5f11fb5b8cbcd8023dfd0d"
+    "scriptSHA256": "f738e778459ea9cb12cabf207b3afb1e3ea7014baf1afbcd5e1fb173475acdbe"
   },
   "c-browse-light": {
     "script": "run-c-scene.cjs",
