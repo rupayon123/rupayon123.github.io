@@ -40,8 +40,12 @@ for key in scenes:
         results.append({'scene': key, 'testStatus': 'sanitizer-failed', 'screenshots': 0})
         print(json.dumps({'scene': key, 'sanitizerError': sanitized.stderr[-1500:]}), flush=True)
     if guarded.returncode or sanitized.returncode:
-        print(json.dumps({'scene': key, 'state': 'stopped-at-first-failure'}), flush=True)
-        break
+        # Independent scenes still fail individually and the final all-eight
+        # gate remains strict. Continue only after sanitized evidence and proven
+        # process release; resource/ownership/sanitizer failures stop the suite.
+        can_continue = sanitized.returncode == 0 and release_safe and receipt.get('originalStopCategory') == 'browser-test-failure'
+        print(json.dumps({'scene': key, 'state': 'failed-and-released' if can_continue else 'stopped-for-unsafe-continuation'}), flush=True)
+        if not can_continue: break
 passed = len(results) == len(scenes) and all(row['testStatus'] == 'passed' for row in results)
 summary = {'schemaVersion': 1, 'appSourceCommit': os.environ['GTA_QA_SOURCE_COMMIT'],
            'nativeFeedSha256': os.environ['GTA_QA_NATIVE_SHA256'], 'previewUrl': os.environ['GTA_QA_BASE_URL'],

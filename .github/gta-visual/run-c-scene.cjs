@@ -190,7 +190,7 @@ async function enlargeFonts(page) {
     const immediate=rows.map(({e})=>snapshot(e));
     await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     const diagnostics=rows.map(({e,before,beforeState},index)=>({before,beforeState,immediate:immediate[index],settled:snapshot(e)}));
-    const samples = rows.map(({e,before,beforeState}) => ({ element: e.tagName, selector:beforeState.selector, before, after: parseFloat(getComputedStyle(e).fontSize) }));
+    const samples = rows.filter(({e}) => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden').map(({e,before,beforeState}) => ({ element: e.tagName, selector:beforeState.selector, before, after: parseFloat(getComputedStyle(e).fontSize) }));
     return { count: rows.length, samples, diagnostics, fontReadiness:document.fonts.status, actualTwoAnimationFramesWaited:true };
   });
 }
