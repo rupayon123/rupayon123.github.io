@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           test "$GITHUB_EVENT_NAME" = push
           test "$GITHUB_REF_NAME" = codex/frontend-preview-20261110
-          test "${{ github.event.before }}" = 4a9014aecc879acf7d7d97f4c5d41a3b8c0b7baa
+          test "${{ github.event.before }}" = bd7ee54321686aa25b948e01cfe496b053fa9fbe
       - name: Check out the exact QA source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -133,6 +133,6 @@ jobs:
               detail=json.loads((root/scene['manifest']).read_text())
               assert scene['testStatus']==detail['testStatus']=='passed'
               assert detail['resource']['releaseConfirmed']
-          print('Only Browse-light clean-baseline diagnostic was checked; all other scenes remain unrun.')
+          print('Only Browse-light interactions and RTL passed; the layout matrix uses earlier evidence and all other scenes remain unrun.')
           PYGATE
-          echo 'Only Browse-light diagnostic ran; original screenshot inspection and other scenes remain.'
+          echo 'Only Browse-light interactions and RTL passed; seven other scenes and original screenshot inspection remain.'

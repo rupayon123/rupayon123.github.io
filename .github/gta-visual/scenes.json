@@ -5,7 +5,7 @@
       "browse",
       "light"
     ],
-    "scope": "Browse-light clean-baseline 200% diagnostic; all other scenes unrun",
+    "scope": "Browse-light clean-baseline readiness diagnostic; other scenes unrun",
     "family": "C_interaction",
     "completionEvent": "C-SCENE-COMPLETE",
     "sourceCase": "browse-light immutable preview",
@@ -14,6 +14,6 @@
       "browse-light actual RTL filter reflow"
     ],
     "viewportSection": null,
-    "scriptSHA256": "32465dffb1ff096ebb4095b7bbdc74e0e45c33067ec986f8dfef0e50dda08709"
+    "scriptSHA256": "0ae6ab7791da5c8006ebda5b96cc722ff0662025b23b5522c3c84cfdcee00a77"
   }
 }

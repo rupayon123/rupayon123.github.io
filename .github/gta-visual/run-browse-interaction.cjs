@@ -374,6 +374,14 @@ async function main(){
     if(await page.locator('.language-tool select').inputValue()!=='ar')await page.locator('.language-tool select').selectOption('ar');
     await page.waitForFunction(()=>document.documentElement.lang==='ar'&&document.documentElement.dir==='rtl');await idleResults(page);
     const sort=page.locator('#oe-sort');await sort.selectOption('relevance');await idleResults(page);
+    const baselineSelectors=['.oe-eyebrow','.oe-directory-end p','.oe-card h3','.oe-card .oe-summary'];
+    try { await page.waitForFunction(selectors=>selectors.every(selector=>{const e=document.querySelector(selector);return e&&e.getClientRects().length>0&&e.checkVisibility({visibilityProperty:true,contentVisibilityAuto:true});}),baselineSelectors,{timeout:30000}); }
+    catch (error) {
+      const state=await page.evaluate(selectors=>({path:location.pathname,queryPresent:!!document.querySelector('#oe-search')?.value,checkedFilterCount:document.querySelectorAll('.oe-filters input:checked').length,libraryStatus:document.querySelector('.oe-explorer')?.getAttribute('data-library-status'),resultsBusy:document.querySelector('.oe-results')?.getAttribute('aria-busy'),resultStatus:document.querySelector('.oe-result-toolbar [role=status]')?.textContent?.trim(),loading:!!document.querySelector('.oe-loading'),empty:document.querySelector('.oe-empty')?.textContent?.trim().slice(0,160),cardCount:document.querySelectorAll('.oe-card').length,missing:selectors.filter(selector=>{const e=document.querySelector(selector);return !e||!e.getClientRects().length||!e.checkVisibility({visibilityProperty:true,contentVisibilityAuto:true});})}),baselineSelectors);
+      log('clean-baseline-readiness-failed',state);throw new Error('Current cards did not become visible: '+JSON.stringify(state),{cause:error});
+    }
+    const missing=await page.evaluate(selectors=>selectors.filter(selector=>{const e=document.querySelector(selector);return !e||!e.getClientRects().length||!e.checkVisibility({visibilityProperty:true,contentVisibilityAuto:true});}),baselineSelectors);
+    assert.deepEqual(missing,[],'Clean baseline selectors must exist by name');
     const baseline=await page.evaluate(()=>Object.fromEntries(['.oe-eyebrow','.oe-directory-end p','.oe-card h3','.oe-card .oe-summary'].map(selector=>{const e=document.querySelector(selector),css=getComputedStyle(e);return [selector,{fontSize:parseFloat(css.fontSize),lineHeight:parseFloat(css.lineHeight)}];})));
     assert.equal(baseline['.oe-eyebrow'].fontSize,12);assert.equal(baseline['.oe-directory-end p'].fontSize,13);assert(Math.abs(baseline['.oe-directory-end p'].lineHeight-23.4)<0.1);assert.equal(baseline['.oe-card h3'].fontSize,25);assert.equal(baseline['.oe-card .oe-summary'].fontSize,15);
     const enlarged=await enlargeFonts(page);for(const row of enlarged.samples)assert(Math.abs(row.after/row.before-2)<0.01);
