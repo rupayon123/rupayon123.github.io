@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           test "$GITHUB_EVENT_NAME" = push
           test "$GITHUB_REF_NAME" = codex/frontend-preview-20261110
-          test "${{ github.event.before }}" = c3e0238a3fa45e9058946564ee92fae2d9d0bffa
+          test "${{ github.event.before }}" = 647f198b92343138b9bee45d0e671a2b10bb10e0
       - name: Check out the exact QA source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -58,7 +58,7 @@ jobs:
           PYFONT
       - name: Verify immutable preview source before opening a browser
         run: python3 .github/gta-visual/verify-preview.py "$GTA_QA_BASE_URL" "$GTA_QA_SOURCE_COMMIT" "$GTA_QA_NATIVE_SHA256"
-      - name: Run explicit layout cases sequentially
+      - name: Run saved filters and beta navigation sequentially
         id: browser
         continue-on-error: true
         run: python3 .github/gta-visual/run-all-scenes.py
@@ -125,7 +125,7 @@ jobs:
           from pathlib import Path
           root=Path(os.environ['RUNNER_TEMP'])/'gta-all-visual-evidence'
           receipt=json.loads((root/'evidence.json').read_text())
-          assert receipt['expectedScenes']==receipt['scenesExecuted']==17
+          assert receipt['expectedScenes']==receipt['scenesExecuted']==3
           assert receipt['browserChecksPassed'] and receipt['safeToPublishEvidence']
           assert receipt['appSourceCommit']==os.environ['GTA_QA_SOURCE_COMMIT']
           assert receipt['nativeFeedSha256']==os.environ['GTA_QA_NATIVE_SHA256']
@@ -133,6 +133,6 @@ jobs:
               detail=json.loads((root/scene['manifest']).read_text())
               assert scene['testStatus']==detail['testStatus']=='passed'
               assert detail['resource']['releaseConfirmed']
-          print('Hub support and explicit Teen/Browse layout cases passed; original visual inspection remains.')
+          print('Only saved-filter interaction and beta keyboard/CTA smoke passed; visual inspection remains.')
           PYGATE
-          echo 'Only configured layout cases ran; screenshot inspection and other flows remain.'
+          echo 'Only the three configured smoke cases ran; original screenshot inspection remains.'

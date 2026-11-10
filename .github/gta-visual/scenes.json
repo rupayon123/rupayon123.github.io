@@ -1,301 +1,48 @@
 {
-  "hub-support-dark-320-font200": {
-    "script": "run-hub-support-current.cjs",
-    "args": [],
-    "scope": "Student hub support dark 320 200% and footer",
-    "family": "viewport",
-    "completionEvent": "SUPPORT-REAL-VIEWPORT-SUPPLEMENT-COMPLETE",
-    "sourceCase": null,
-    "behaviorCases": [],
-    "viewportSection": "hub-320-dark-font200-support-real",
-    "scriptSHA256": "77e3f93a81d1798f77d99e5390ffad171c6dbf47cba85cd0bddf6a7a742525bf"
-  },
-  "teen-light-320-100": {
-    "script": "run-single-layout-case.cjs",
-    "args": [
-      "teen",
-      "light",
-      "320",
-      "100"
-    ],
-    "scope": "Teen light 320 100% actual List layout",
-    "family": "LAYOUT",
-    "completionEvent": "LAYOUT-CASE-COMPLETE",
-    "sourceCase": "teen-light immutable preview",
-    "behaviorCases": [
-      "teen-light-320-font100 real layout"
-    ],
-    "viewportSection": null,
-    "scriptSHA256": "6db5e3608a20e30bf44dc5cb1089931c26f7895b2693cfb04425952c59e683c2"
-  },
-  "teen-light-390-100": {
-    "script": "run-single-layout-case.cjs",
-    "args": [
-      "teen",
-      "light",
-      "390",
-      "100"
-    ],
-    "scope": "Teen light 390 100% actual List layout",
-    "family": "LAYOUT",
-    "completionEvent": "LAYOUT-CASE-COMPLETE",
-    "sourceCase": "teen-light immutable preview",
-    "behaviorCases": [
-      "teen-light-390-font100 real layout"
-    ],
-    "viewportSection": null,
-    "scriptSHA256": "6db5e3608a20e30bf44dc5cb1089931c26f7895b2693cfb04425952c59e683c2"
-  },
-  "teen-light-768-100": {
-    "script": "run-single-layout-case.cjs",
-    "args": [
-      "teen",
-      "light",
-      "768",
-      "100"
-    ],
-    "scope": "Teen light 768 100% actual List layout",
-    "family": "LAYOUT",
-    "completionEvent": "LAYOUT-CASE-COMPLETE",
-    "sourceCase": "teen-light immutable preview",
-    "behaviorCases": [
-      "teen-light-768-font100 real layout"
-    ],
-    "viewportSection": null,
-    "scriptSHA256": "6db5e3608a20e30bf44dc5cb1089931c26f7895b2693cfb04425952c59e683c2"
-  },
-  "teen-light-1440-100": {
-    "script": "run-single-layout-case.cjs",
-    "args": [
-      "teen",
-      "light",
-      "1440",
-      "100"
-    ],
-    "scope": "Teen light 1440 100% actual List layout",
-    "family": "LAYOUT",
-    "completionEvent": "LAYOUT-CASE-COMPLETE",
-    "sourceCase": "teen-light immutable preview",
-    "behaviorCases": [
-      "teen-light-1440-font100 real layout"
-    ],
-    "viewportSection": null,
-    "scriptSHA256": "6db5e3608a20e30bf44dc5cb1089931c26f7895b2693cfb04425952c59e683c2"
-  },
-  "teen-light-320-200": {
-    "script": "run-single-layout-case.cjs",
-    "args": [
-      "teen",
-      "light",
-      "320",
-      "200"
-    ],
-    "scope": "Teen light 320 200% actual List layout",
-    "family": "LAYOUT",
-    "completionEvent": "LAYOUT-CASE-COMPLETE",
-    "sourceCase": "teen-light immutable preview",
-    "behaviorCases": [
-      "teen-light-320-font200 real layout"
-    ],
-    "viewportSection": null,
-    "scriptSHA256": "6db5e3608a20e30bf44dc5cb1089931c26f7895b2693cfb04425952c59e683c2"
-  },
-  "teen-light-390-200": {
-    "script": "run-single-layout-case.cjs",
-    "args": [
-      "teen",
-      "light",
-      "390",
-      "200"
-    ],
-    "scope": "Teen light 390 200% actual List layout",
-    "family": "LAYOUT",
-    "completionEvent": "LAYOUT-CASE-COMPLETE",
-    "sourceCase": "teen-light immutable preview",
-    "behaviorCases": [
-      "teen-light-390-font200 real layout"
-    ],
-    "viewportSection": null,
-    "scriptSHA256": "6db5e3608a20e30bf44dc5cb1089931c26f7895b2693cfb04425952c59e683c2"
-  },
-  "teen-dark-320-100": {
-    "script": "run-single-layout-case.cjs",
-    "args": [
-      "teen",
-      "dark",
-      "320",
-      "100"
-    ],
-    "scope": "Teen dark 320 100% actual List layout",
-    "family": "LAYOUT",
-    "completionEvent": "LAYOUT-CASE-COMPLETE",
-    "sourceCase": "teen-dark immutable preview",
-    "behaviorCases": [
-      "teen-dark-320-font100 real layout"
-    ],
-    "viewportSection": null,
-    "scriptSHA256": "6db5e3608a20e30bf44dc5cb1089931c26f7895b2693cfb04425952c59e683c2"
-  },
-  "teen-dark-390-100": {
-    "script": "run-single-layout-case.cjs",
-    "args": [
-      "teen",
-      "dark",
-      "390",
-      "100"
-    ],
-    "scope": "Teen dark 390 100% actual List layout",
-    "family": "LAYOUT",
-    "completionEvent": "LAYOUT-CASE-COMPLETE",
-    "sourceCase": "teen-dark immutable preview",
-    "behaviorCases": [
-      "teen-dark-390-font100 real layout"
-    ],
-    "viewportSection": null,
-    "scriptSHA256": "6db5e3608a20e30bf44dc5cb1089931c26f7895b2693cfb04425952c59e683c2"
-  },
-  "teen-dark-768-100": {
-    "script": "run-single-layout-case.cjs",
-    "args": [
-      "teen",
-      "dark",
-      "768",
-      "100"
-    ],
-    "scope": "Teen dark 768 100% actual List layout",
-    "family": "LAYOUT",
-    "completionEvent": "LAYOUT-CASE-COMPLETE",
-    "sourceCase": "teen-dark immutable preview",
-    "behaviorCases": [
-      "teen-dark-768-font100 real layout"
-    ],
-    "viewportSection": null,
-    "scriptSHA256": "6db5e3608a20e30bf44dc5cb1089931c26f7895b2693cfb04425952c59e683c2"
-  },
-  "teen-dark-1440-100": {
-    "script": "run-single-layout-case.cjs",
-    "args": [
-      "teen",
-      "dark",
-      "1440",
-      "100"
-    ],
-    "scope": "Teen dark 1440 100% actual List layout",
-    "family": "LAYOUT",
-    "completionEvent": "LAYOUT-CASE-COMPLETE",
-    "sourceCase": "teen-dark immutable preview",
-    "behaviorCases": [
-      "teen-dark-1440-font100 real layout"
-    ],
-    "viewportSection": null,
-    "scriptSHA256": "6db5e3608a20e30bf44dc5cb1089931c26f7895b2693cfb04425952c59e683c2"
-  },
-  "teen-dark-320-200": {
-    "script": "run-single-layout-case.cjs",
-    "args": [
-      "teen",
-      "dark",
-      "320",
-      "200"
-    ],
-    "scope": "Teen dark 320 200% actual List layout",
-    "family": "LAYOUT",
-    "completionEvent": "LAYOUT-CASE-COMPLETE",
-    "sourceCase": "teen-dark immutable preview",
-    "behaviorCases": [
-      "teen-dark-320-font200 real layout"
-    ],
-    "viewportSection": null,
-    "scriptSHA256": "6db5e3608a20e30bf44dc5cb1089931c26f7895b2693cfb04425952c59e683c2"
-  },
-  "teen-dark-390-200": {
-    "script": "run-single-layout-case.cjs",
-    "args": [
-      "teen",
-      "dark",
-      "390",
-      "200"
-    ],
-    "scope": "Teen dark 390 200% actual List layout",
-    "family": "LAYOUT",
-    "completionEvent": "LAYOUT-CASE-COMPLETE",
-    "sourceCase": "teen-dark immutable preview",
-    "behaviorCases": [
-      "teen-dark-390-font200 real layout"
-    ],
-    "viewportSection": null,
-    "scriptSHA256": "6db5e3608a20e30bf44dc5cb1089931c26f7895b2693cfb04425952c59e683c2"
-  },
-  "browse-light-320-100": {
-    "script": "run-single-layout-case.cjs",
+  "browse-saved-smoke": {
+    "script": "run-saved-interaction-only.cjs",
     "args": [
       "browse",
-      "light",
-      "320",
-      "100"
+      "light"
     ],
-    "scope": "Browse light 320 100% actual List layout",
-    "family": "LAYOUT",
-    "completionEvent": "LAYOUT-CASE-COMPLETE",
+    "scope": "Browse saved filter and support interaction",
+    "family": "SAVED",
+    "completionEvent": "C-SCENE-COMPLETE",
     "sourceCase": "browse-light immutable preview",
     "behaviorCases": [
-      "browse-light-320-font100 real layout"
+      "browse-light real support and scoped preset interactions"
     ],
     "viewportSection": null,
-    "scriptSHA256": "6db5e3608a20e30bf44dc5cb1089931c26f7895b2693cfb04425952c59e683c2"
+    "scriptSHA256": "970be864b285ade7ee26c0347ba2979f9442ff4aacad79164f2233d51f95d063"
   },
-  "browse-light-390-100": {
-    "script": "run-single-layout-case.cjs",
+  "beta-landing-smoke": {
+    "script": "run-beta-smoke-only.cjs",
     "args": [
-      "browse",
-      "light",
-      "390",
-      "100"
+      "landing"
     ],
-    "scope": "Browse light 390 100% actual List layout",
-    "family": "LAYOUT",
-    "completionEvent": "LAYOUT-CASE-COMPLETE",
-    "sourceCase": "browse-light immutable preview",
+    "scope": "Beta landing keyboard CTA reduced motion smoke",
+    "family": "BETA_SMOKE",
+    "completionEvent": "BETA-SCENE-COMPLETE",
+    "sourceCase": "beta-landing immutable preview",
     "behaviorCases": [
-      "browse-light-390-font100 real layout"
+      "beta-landing pointer keyboard and navigation"
     ],
     "viewportSection": null,
-    "scriptSHA256": "6db5e3608a20e30bf44dc5cb1089931c26f7895b2693cfb04425952c59e683c2"
+    "scriptSHA256": "5d5753cf9618edf31dd5a9b54762be256245ee67caa9bb4a9217da429d5d7f8a"
   },
-  "browse-light-768-100": {
-    "script": "run-single-layout-case.cjs",
+  "beta-ios-smoke": {
+    "script": "run-beta-smoke-only.cjs",
     "args": [
-      "browse",
-      "light",
-      "768",
-      "100"
+      "ios"
     ],
-    "scope": "Browse light 768 100% actual List layout",
-    "family": "LAYOUT",
-    "completionEvent": "LAYOUT-CASE-COMPLETE",
-    "sourceCase": "browse-light immutable preview",
+    "scope": "Beta ios keyboard CTA reduced motion smoke",
+    "family": "BETA_SMOKE",
+    "completionEvent": "BETA-SCENE-COMPLETE",
+    "sourceCase": "beta-ios immutable preview",
     "behaviorCases": [
-      "browse-light-768-font100 real layout"
+      "beta-ios pointer keyboard and navigation"
     ],
     "viewportSection": null,
-    "scriptSHA256": "6db5e3608a20e30bf44dc5cb1089931c26f7895b2693cfb04425952c59e683c2"
-  },
-  "browse-light-1440-100": {
-    "script": "run-single-layout-case.cjs",
-    "args": [
-      "browse",
-      "light",
-      "1440",
-      "100"
-    ],
-    "scope": "Browse light 1440 100% actual List layout",
-    "family": "LAYOUT",
-    "completionEvent": "LAYOUT-CASE-COMPLETE",
-    "sourceCase": "browse-light immutable preview",
-    "behaviorCases": [
-      "browse-light-1440-font100 real layout"
-    ],
-    "viewportSection": null,
-    "scriptSHA256": "6db5e3608a20e30bf44dc5cb1089931c26f7895b2693cfb04425952c59e683c2"
+    "scriptSHA256": "5d5753cf9618edf31dd5a9b54762be256245ee67caa9bb4a9217da429d5d7f8a"
   }
 }

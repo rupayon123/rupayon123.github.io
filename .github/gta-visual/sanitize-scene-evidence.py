@@ -85,6 +85,15 @@ if receipt['passed']:
   names={e['name'] for e in coverage}
   assert all(label+suffix in names for suffix in ['-filters','-cards','-directory'])
   if SCENE['args'][3]=='200':assert len([e for e in events if e.get('event')=='layout-font200' and e.get('titles',0)>0 and e.get('summaries',0)>0])==1
+ elif SCENE['family']=='SAVED':
+  assert cases_completed==1 and source_checks_completed==1 and completion[0]['passedCases']==2
+  assert completion[0]['surface']==SCENE['args'][0] and completion[0]['mode']==SCENE['args'][1]
+  assert len(dialog_coverage)==1 and dialog_coverage[0]['name']=='browse-light-actual-asl-policy-conditions'
+  assert any(e.get('event')=='explicit-update-persisted' and e.get('changedOnRequestPersisted') for e in events)
+ elif SCENE['family']=='BETA_SMOKE':
+  assert cases_completed==1 and source_checks_completed==1 and completion[0]['passedCases']==2
+  assert completion[0]['route']==SCENE['args'][0]
+  assert any(e.get('event')=='beta-viewport-frame' and 'keyboard-focus' in e.get('name','') for e in events)
  elif SCENE['family']=='viewport':
   if KEY=='hub-support-dark-320-font200':
    assert len([e for e in events if e.get('event')=='hub-truthful-support-state' and e.get('individualRoles')==0 and e.get('noReviewedSupportsNotice') and e.get('unconfirmedInitiallySeparate') and e.get('unconfirmedToggle') and e.get('cleared')])==1
