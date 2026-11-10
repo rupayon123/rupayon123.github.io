@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           test "$GITHUB_EVENT_NAME" = push
           test "$GITHUB_REF_NAME" = codex/frontend-preview-20261110
-          test "${{ github.event.before }}" = bd7ee54321686aa25b948e01cfe496b053fa9fbe
+          test "${{ github.event.before }}" = 2f32a16015f0f982d371e01c0c634d05594012e4
       - name: Check out the exact QA source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
