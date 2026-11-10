@@ -1,6 +1,6 @@
 {
   "hub-support-dark-320-font200": {
-    "script": "run-hub-support-viewport.cjs",
+    "script": "run-hub-support-current.cjs",
     "args": [],
     "scope": "Student hub support dark 320 200% and footer",
     "family": "viewport",
@@ -8,7 +8,7 @@
     "sourceCase": null,
     "behaviorCases": [],
     "viewportSection": "hub-320-dark-font200-support-real",
-    "scriptSHA256": "f56af27b3b477cb6a42a71199493bd396a7219013e7e4858eca0e87bc525427d"
+    "scriptSHA256": "77e3f93a81d1798f77d99e5390ffad171c6dbf47cba85cd0bddf6a7a742525bf"
   },
   "teen-light-320-100": {
     "script": "run-single-layout-case.cjs",

@@ -86,6 +86,8 @@ if receipt['passed']:
   assert all(label+suffix in names for suffix in ['-filters','-cards','-directory'])
   if SCENE['args'][3]=='200':assert len([e for e in events if e.get('event')=='layout-font200' and e.get('titles',0)>0 and e.get('summaries',0)>0])==1
  elif SCENE['family']=='viewport':
+  if KEY=='hub-support-dark-320-font200':
+   assert len([e for e in events if e.get('event')=='hub-truthful-support-state' and e.get('individualRoles')==0 and e.get('noReviewedSupportsNotice') and e.get('unconfirmedInitiallySeparate') and e.get('unconfirmedToggle') and e.get('cleared')])==1
   assert len(coverage)==1 and coverage[0]['name']==SCENE['viewportSection']
   frames=[e for e in events if e.get('event')=='real-viewport-section-frame' and e.get('name')==SCENE['viewportSection']]
   originals=[image for image in images if image['file'].startswith('screenshots/'+SCENE['viewportSection']+'-viewport-')]
