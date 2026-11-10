@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           test "$GITHUB_EVENT_NAME" = push
           test "$GITHUB_REF_NAME" = codex/frontend-preview-20261110
-          test "${{ github.event.before }}" = 647f198b92343138b9bee45d0e671a2b10bb10e0
+          test "${{ github.event.before }}" = 536329b10b046414f8ef31e183c164b38367f5d6
       - name: Check out the exact QA source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -58,7 +58,7 @@ jobs:
           PYFONT
       - name: Verify immutable preview source before opening a browser
         run: python3 .github/gta-visual/verify-preview.py "$GTA_QA_BASE_URL" "$GTA_QA_SOURCE_COMMIT" "$GTA_QA_NATIVE_SHA256"
-      - name: Run saved filters and beta navigation sequentially
+      - name: Run map and home orbit cases sequentially
         id: browser
         continue-on-error: true
         run: python3 .github/gta-visual/run-all-scenes.py
@@ -133,6 +133,6 @@ jobs:
               detail=json.loads((root/scene['manifest']).read_text())
               assert scene['testStatus']==detail['testStatus']=='passed'
               assert detail['resource']['releaseConfirmed']
-          print('Only saved-filter interaction and beta keyboard/CTA smoke passed; visual inspection remains.')
+          print('Map and home orbit cases passed; original visual inspection remains.')
           PYGATE
-          echo 'Only the three configured smoke cases ran; original screenshot inspection remains.'
+          echo 'Only configured Map and home orbit cases ran; original screenshot inspection remains.'

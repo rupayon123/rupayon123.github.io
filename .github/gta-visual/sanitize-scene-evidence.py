@@ -94,6 +94,17 @@ if receipt['passed']:
   assert cases_completed==1 and source_checks_completed==1 and completion[0]['passedCases']==2
   assert completion[0]['route']==SCENE['args'][0]
   assert any(e.get('event')=='beta-viewport-frame' and 'keyboard-focus' in e.get('name','') for e in events)
+ elif SCENE['family']=='MAP_FLOW':
+  assert cases_completed==1 and source_checks_completed==1 and completion[0]['passedCases']==2
+  assert completion[0]['width']==int(SCENE['args'][0])
+  records=[e for e in events if e.get('event')=='actual-map-flow']
+  assert len(records)==1 and records[0]['venues']>0 and records[0]['programTotal']==records[0]['grouped'] and records[0]['mapResponses']>0 and records[0]['tileResponses']>0 and records[0]['allVenueDotsInside'] and records[0]['listUnmount']
+  names={e['name'] for e in coverage};prefix='browse-map-'+SCENE['args'][0]
+  assert all(prefix+suffix in names for suffix in ['-venues','-groups','-3d'])
+ elif SCENE['family']=='HERO_FLOW':
+  assert cases_completed==1 and source_checks_completed==1 and completion[0]['passedCases']==2
+  assert len([e for e in events if e.get('event')=='home-hero-motion' and all(e.get(k) for k in ['moved','paused','resumed','upright','reducedMotion'])])==1
+  names={e['name'] for e in coverage};assert all(name in names for name in ['home-hero-running','home-hero-paused','home-hero-reduced-motion'])
  elif SCENE['family']=='viewport':
   if KEY=='hub-support-dark-320-font200':
    assert len([e for e in events if e.get('event')=='hub-truthful-support-state' and e.get('individualRoles')==0 and e.get('noReviewedSupportsNotice') and e.get('unconfirmedInitiallySeparate') and e.get('unconfirmedToggle') and e.get('cleared')])==1

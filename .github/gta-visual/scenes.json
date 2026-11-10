@@ -1,48 +1,45 @@
 {
-  "browse-saved-smoke": {
-    "script": "run-saved-interaction-only.cjs",
+  "map-390": {
+    "script": "run-map-flow.cjs",
     "args": [
-      "browse",
-      "light"
+      "390"
     ],
-    "scope": "Browse saved filter and support interaction",
-    "family": "SAVED",
-    "completionEvent": "C-SCENE-COMPLETE",
-    "sourceCase": "browse-light immutable preview",
+    "scope": "Actual Browse default map and controls at 390",
+    "family": "MAP_FLOW",
+    "completionEvent": "MAP-FLOW-COMPLETE",
+    "sourceCase": "browse-map-390 immutable preview",
     "behaviorCases": [
-      "browse-light real support and scoped preset interactions"
+      "browse-map-390 actual map flow"
     ],
     "viewportSection": null,
-    "scriptSHA256": "970be864b285ade7ee26c0347ba2979f9442ff4aacad79164f2233d51f95d063"
+    "scriptSHA256": "697871eba346ccc63921a636df692236cbee5b56a9ba0a35954c43b3ad51068e"
   },
-  "beta-landing-smoke": {
-    "script": "run-beta-smoke-only.cjs",
+  "map-1440": {
+    "script": "run-map-flow.cjs",
     "args": [
-      "landing"
+      "1440"
     ],
-    "scope": "Beta landing keyboard CTA reduced motion smoke",
-    "family": "BETA_SMOKE",
-    "completionEvent": "BETA-SCENE-COMPLETE",
-    "sourceCase": "beta-landing immutable preview",
+    "scope": "Actual Browse default map and controls at 1440",
+    "family": "MAP_FLOW",
+    "completionEvent": "MAP-FLOW-COMPLETE",
+    "sourceCase": "browse-map-1440 immutable preview",
     "behaviorCases": [
-      "beta-landing pointer keyboard and navigation"
+      "browse-map-1440 actual map flow"
     ],
     "viewportSection": null,
-    "scriptSHA256": "5d5753cf9618edf31dd5a9b54762be256245ee67caa9bb4a9217da429d5d7f8a"
+    "scriptSHA256": "697871eba346ccc63921a636df692236cbee5b56a9ba0a35954c43b3ad51068e"
   },
-  "beta-ios-smoke": {
-    "script": "run-beta-smoke-only.cjs",
-    "args": [
-      "ios"
-    ],
-    "scope": "Beta ios keyboard CTA reduced motion smoke",
-    "family": "BETA_SMOKE",
-    "completionEvent": "BETA-SCENE-COMPLETE",
-    "sourceCase": "beta-ios immutable preview",
+  "home-hero-motion": {
+    "script": "run-home-hero-motion.cjs",
+    "args": [],
+    "scope": "Home orbit pause, resume, upright icons and reduced motion",
+    "family": "HERO_FLOW",
+    "completionEvent": "HERO-FLOW-COMPLETE",
+    "sourceCase": "home-hero immutable preview",
     "behaviorCases": [
-      "beta-ios pointer keyboard and navigation"
+      "home-hero real orbit and motion controls"
     ],
     "viewportSection": null,
-    "scriptSHA256": "5d5753cf9618edf31dd5a9b54762be256245ee67caa9bb4a9217da429d5d7f8a"
+    "scriptSHA256": "edf07d25af7bc2b545a9d0c40beb8e52b8dc2a872cc0d44ebe8529277f33804f"
   }
 }
