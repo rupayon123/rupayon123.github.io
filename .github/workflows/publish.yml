@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           test "$GITHUB_EVENT_NAME" = push
           test "$GITHUB_REF_NAME" = codex/frontend-preview-20261110
-          test "${{ github.event.before }}" = 59e78869c91dbf9fa68ac559d8956a2ed566308c
+          test "${{ github.event.before }}" = 3d40247cf5bc4e82b27cb3ec8cdfecc587ebebee
       - name: Check out the exact QA source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -133,6 +133,6 @@ jobs:
               detail=json.loads((root/scene['manifest']).read_text())
               assert scene['testStatus']==detail['testStatus']=='passed'
               assert detail['resource']['releaseConfirmed']
-          print('Only standalone Browse-dark RTL was checked; other scenes remain unrun.')
+          print('Only Home saved filters dark 320 at 200% were checked.')
           PYGATE
-          echo 'Only standalone Browse-dark RTL ran; original screenshot inspection and other scenes remain.'
+          echo 'Home saved-filter screenshot inspection and other scenes remain.'
