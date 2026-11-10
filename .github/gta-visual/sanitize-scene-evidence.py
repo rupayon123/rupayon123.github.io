@@ -59,9 +59,9 @@ if receipt['passed']:
  assert len(images)>0,'Passed scene must include original screenshots'
  assert len(completion)==1 and completion[0]['sourceCommit']==receipt['sourceCommit']
  assert case_names==(([source_case] if source_case else [])+behavior_cases),'Every configured case must pass exactly once'
- if SCENE['family']=='C':
-  assert cases_completed==4 and source_checks_completed==1 and completion[0]['passedCases']==5
-  releases=[e for e in events if e.get('event')=='browser-release-confirmed'];assert len(releases)==6 and all(e['remainingOwnedPids']==0 for e in releases)
+ if SCENE['family'] in ('C','C_interaction'):
+  assert cases_completed==len(behavior_cases) and source_checks_completed==1 and completion[0]['passedCases']==1+len(behavior_cases)
+  releases=[e for e in events if e.get('event')=='browser-release-confirmed'];assert len(releases)==(6 if SCENE['family']=='C' else 0) and all(e['remainingOwnedPids']==0 for e in releases)
   assert completion[0]['surface']==SCENE['args'][0] and completion[0]['mode']==SCENE['args'][1]
   name='-'.join(SCENE['args'])+'-actual-asl-policy-conditions'
   assert len(dialog_coverage)==1 and dialog_coverage[0]['name']==name

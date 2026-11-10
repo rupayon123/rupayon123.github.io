@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           test "$GITHUB_EVENT_NAME" = push
           test "$GITHUB_REF_NAME" = codex/frontend-preview-20261110
-          test "${{ github.event.before }}" = c28f0c9fde3cb367c9e1d20d3cd593760d1999b2
+          test "${{ github.event.before }}" = 214d815c377f108b02fb7c6a05649caf46222ef6
       - name: Check out the exact QA source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -58,7 +58,7 @@ jobs:
           PYFONT
       - name: Verify immutable preview source before opening a browser
         run: python3 .github/gta-visual/verify-preview.py "$GTA_QA_BASE_URL" "$GTA_QA_SOURCE_COMMIT" "$GTA_QA_NATIVE_SHA256"
-      - name: Run only the guarded Browse-light scene
+      - name: Run only Browse-light saved-filter and RTL interactions
         id: browser
         continue-on-error: true
         run: python3 .github/gta-visual/run-all-scenes.py
@@ -133,6 +133,6 @@ jobs:
               detail=json.loads((root/scene['manifest']).read_text())
               assert scene['testStatus']==detail['testStatus']=='passed'
               assert detail['resource']['releaseConfirmed']
-          print('The single Browse-light scene passed; the other seven scenes were not run.')
+          print('Only Browse-light interactions and RTL passed; the layout matrix uses earlier evidence and all other scenes remain unrun.')
           PYGATE
-          echo 'Single Browse-light check passed. Seven scenes and original PNG inspection remain; no production release is implied.'
+          echo 'Only Browse-light interactions and RTL passed; seven other scenes and original screenshot inspection remain.'

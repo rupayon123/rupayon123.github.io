@@ -1,21 +1,19 @@
 {
-  "c-browse-light": {
-    "script": "run-c-scene.cjs",
+  "c-browse-light-interaction": {
+    "script": "run-browse-interaction.cjs",
     "args": [
       "browse",
       "light"
     ],
-    "scope": "browse actual list light filters and presets",
-    "family": "C",
+    "scope": "Browse-light saved-filter interaction and RTL; normal and text-size matrix reused from e3b651e8",
+    "family": "C_interaction",
     "completionEvent": "C-SCENE-COMPLETE",
     "sourceCase": "browse-light immutable preview",
     "behaviorCases": [
-      "browse-light actual list matrix and clear gap",
-      "browse-light computed font200 list reflow",
       "browse-light real support and scoped preset interactions",
       "browse-light actual RTL filter reflow"
     ],
     "viewportSection": null,
-    "scriptSHA256": "6ff04e1738a67e53aa9dda1a0a25cb04052b151c08f5a38f623b8e775812b034"
+    "scriptSHA256": "2c0f46d4bee6f2c7bae64b176276a4ebe2d475e47c40d127451ff3837bb99c2e"
   }
 }
