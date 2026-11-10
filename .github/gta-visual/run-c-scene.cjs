@@ -211,10 +211,11 @@ async function enlargeFonts(page) {
   });
 }
 async function savePreset(page, name) {
-  await page.getByLabel('Filter name', { exact: true }).fill(name);
+  const input=page.getByLabel('Filter name', { exact: true });await input.fill(name);
+  const savedName=(await input.inputValue()).trim();assert(savedName,'Saved filter name must be nonempty');
   await page.getByRole('button', { name: 'Save filter', exact: true }).click();
   await page.getByText('Filter saved.', { exact: true }).waitFor();
-  const parsed = JSON.parse(await archive(page)); return parsed.presets.find(p => p.name === name);
+  const parsed = JSON.parse(await archive(page));const preset=parsed.presets.find(p => p.name === savedName);assert(preset,'Saved filter must exist under the actual normalized input name');return preset;
 }
 
 
@@ -321,7 +322,7 @@ async function footerReachable(page,name){
 }
 async function main(){
   assert(process.env.GTA_QA_BROWSER);assert(CAPTURE);browser=await chromium.launch({executablePath:process.env.GTA_QA_BROWSER,headless:true,args:['--disable-crash-reporter']});
-  const context=await fresh({colorScheme:'light'}),page=await context.newPage();activePage=page;
+  let context=await fresh({colorScheme:'light'}),page=await context.newPage();activePage=page;
   await test(`${surface}-${mode} immutable preview`,async()=>{const r=await context.request.get(BASE+'/');assert(r.ok());assert(r.headers()['x-robots-tag']?.toLowerCase().includes('noindex'));const m=await(await context.request.get(BASE+'/hosting-release.json')).json();assert.equal(m.sourceCommit,COMMIT);assert.equal(m.nativeFeedSha256,NATIVE);});
   await test(`${surface}-${mode} actual list matrix and clear gap`,async()=>{
     await actualListReady(page);
@@ -339,6 +340,9 @@ async function main(){
     for(const width of [320,390]){await page.setViewportSize({width,height:844});await actualListReady(page);const enlarged=await enlargeFonts(page);log('computed-font200',{surface,mode,width,...enlarged});assert(enlarged.samples.length);for(const row of enlarged.samples)assert(Math.abs(row.after/row.before-2)<0.01,JSON.stringify(row));const label=`${surface}-${width}-${mode}-font200`;await geometry(page,label);await capture(page,label);await viewportSectionCapture(page,'.scoped-saved-filters',label+'-presets');await viewportSectionCapture(page,'.accessibility-filter',label+'-support');}
   });
   await test(`${surface}-${mode} real support and scoped preset interactions`,async()=>{
+    // This independent interaction case starts with no saved filters; release the
+    // screenshot-heavy browser first so memory cannot accumulate across cases.
+    await context.close();await browser.close();browser=await chromium.launch({executablePath:process.env.GTA_QA_BROWSER,headless:true,args:['--disable-crash-reporter']});context=await fresh({colorScheme:'light'});page=await context.newPage();activePage=page;
     await page.setViewportSize({width:390,height:844});await actualListReady(page);
     const checks=page.locator('.accessibility-filter input[type=checkbox]');assert.equal(await checks.count(),8);for(let i=0;i<8;i++)assert.equal(await checks.nth(i).isChecked(),false);
     const resultCount=async()=>Number((await page.locator('.oe-result-toolbar > p strong').innerText()).replace(/\D/g,''));
