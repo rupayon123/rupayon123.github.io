@@ -168,10 +168,12 @@ async function enlargeFonts(page) {
       .filter(e => !e.closest('svg,.gta-artwork,.sr-only,.oe-sr-only')).map(e => ({ e, before: parseFloat(getComputedStyle(e).fontSize), beforeState:snapshot(e) }));
     for (const { e, before } of rows) e.style.setProperty('font-size', before * 2 + 'px', 'important');
     const immediate=rows.map(({e})=>snapshot(e));
+    const activeFontTransitionsBeforeSettle=document.getAnimations().filter(a=>a.effect?.getKeyframes().some(f=>typeof f.fontSize==='string')).length;
+    await Promise.allSettled(document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished));
     await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     const diagnostics=rows.map(({e,before,beforeState},index)=>({before,beforeState,immediate:immediate[index],settled:snapshot(e)}));
-    const samples = rows.filter(({e}) => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden').map(({e,before,beforeState}) => ({ element: e.tagName, selector:beforeState.selector, before, after: parseFloat(getComputedStyle(e).fontSize) }));
-    return { count: rows.length, samples, diagnostics, fontReadiness:document.fonts.status, actualTwoAnimationFramesWaited:true };
+    const samples = rows.filter(({e}) => e.getClientRects().length > 0 && e.checkVisibility({visibilityProperty:true,contentVisibilityAuto:true})).map(({e,before,beforeState}) => ({ element: e.tagName, selector:beforeState.selector, before, after: parseFloat(getComputedStyle(e).fontSize) }));
+    return { count: rows.length, samples, diagnostics, fontReadiness:document.fonts.status, actualTwoAnimationFramesWaited:true,activeFontTransitionsBeforeSettle,finiteAnimationsSettledBeforeMeasurement:true };
   });
 }
 async function savePreset(page, name) {

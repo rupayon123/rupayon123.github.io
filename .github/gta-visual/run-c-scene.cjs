@@ -104,7 +104,7 @@ async function rangeClampRegression(page){
  const collect=(container)=>{const walker=document.createTreeWalker(container,NodeFilter.SHOW_TEXT),out=[];let node,index=0;while((node=walker.nextNode())){if(!node.textContent.trim())continue;const id=index++,parent=node.parentElement,style=getComputedStyle(parent),box=parent.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(node);for(const r of range.getClientRects())if(r.width&&r.height)out.push({left:r.left,right:r.right,top:r.top,bottom:r.bottom,nodeIndex:id,parentSelector:parent.id||parent.tagName,lineClamp:parseInt(style.webkitLineClamp)||0,clipHidden:style.overflowX==='hidden'&&style.overflowY==='hidden',normalLeading:parseFloat(style.lineHeight)>=parseFloat(style.fontSize),parentBox:{left:box.left,right:box.right,top:box.top,bottom:box.bottom}});}return out;};
  const actual=[];for(const summary of await page.locator('.oe-summary').all())actual.push(await summary.evaluate(collect));
  let actualPairs=0;for(const rows of actual)for(let i=0;i<rows.length;i++)for(let j=i+1;j<rows.length;j++)if(clampedRangeDuplicate(rows[i],rows[j]))actualPairs++;
- assert(actualPairs>0,'Actual clamped source paragraphs must exercise the duplicate-range classification');
+ assert(surface!=='browse'||actualPairs>0,'Browse source paragraphs must exercise the duplicate-range classification; short teen paragraphs may have none');
  const scratch=await page.context().newPage();try{
   await scratch.setContent('<style>p{position:relative;width:240px;height:70px;font:15px/25.5px Arial}#collision span{position:absolute;left:0;top:0;width:200px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}#plain{height:auto;display:block;overflow:visible}</style><p id="collision"><span id="a">Actual overlap</span><span id="b">Actual overlap</span></p><p id="plain">A long description wraps normally over several lines without a clamp. A long description wraps normally over several lines without a clamp.</p>');
   const bad=await scratch.locator('#collision').evaluate(collect);assert.equal(bad.length,2);assert(Math.min(bad[0].right,bad[1].right)-Math.max(bad[0].left,bad[1].left)>2);assert(Math.min(bad[0].bottom,bad[1].bottom)-Math.max(bad[0].top,bad[1].top)>2);assert(!clampedRangeDuplicate(bad[0],bad[1]),'Genuinely overlapping separate DOM text nodes remain hard failures');
@@ -188,10 +188,12 @@ async function enlargeFonts(page) {
       .filter(e => !e.closest('svg,.gta-artwork,.sr-only,.oe-sr-only')).map(e => ({ e, before: parseFloat(getComputedStyle(e).fontSize), beforeState:snapshot(e) }));
     for (const { e, before } of rows) e.style.setProperty('font-size', before * 2 + 'px', 'important');
     const immediate=rows.map(({e})=>snapshot(e));
+    const activeFontTransitionsBeforeSettle=document.getAnimations().filter(a=>a.effect?.getKeyframes().some(f=>typeof f.fontSize==='string')).length;
+    await Promise.allSettled(document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished));
     await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     const diagnostics=rows.map(({e,before,beforeState},index)=>({before,beforeState,immediate:immediate[index],settled:snapshot(e)}));
-    const samples = rows.filter(({e}) => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden').map(({e,before,beforeState}) => ({ element: e.tagName, selector:beforeState.selector, before, after: parseFloat(getComputedStyle(e).fontSize) }));
-    return { count: rows.length, samples, diagnostics, fontReadiness:document.fonts.status, actualTwoAnimationFramesWaited:true };
+    const samples = rows.filter(({e}) => e.getClientRects().length > 0 && e.checkVisibility({visibilityProperty:true,contentVisibilityAuto:true})).map(({e,before,beforeState}) => ({ element: e.tagName, selector:beforeState.selector, before, after: parseFloat(getComputedStyle(e).fontSize) }));
+    return { count: rows.length, samples, diagnostics, fontReadiness:document.fonts.status, actualTwoAnimationFramesWaited:true,activeFontTransitionsBeforeSettle,finiteAnimationsSettledBeforeMeasurement:true };
   });
 }
 async function savePreset(page, name) {
