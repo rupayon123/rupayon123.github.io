@@ -13,7 +13,7 @@ const networkByContext=new WeakMap();
 async function capture(page,name){
   if(!CAPTURE)return;
   await page.evaluate(()=>document.fonts.ready);await page.waitForFunction(()=>[...document.images].every(i=>i.complete&&i.naturalWidth>0));
-  await page.evaluate(async()=>{await Promise.allSettled(document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished));await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));});
+  await page.evaluate(async()=>{const visibleFinite=document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity && a.effect?.target instanceof Element && a.effect.target.checkVisibility({visibilityProperty:true,contentVisibilityAuto:true}));let timer;try{await Promise.race([Promise.allSettled(visibleFinite.map(a=>a.finished)),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Rendered capture animation did not settle within3000ms')),3000);})]);}finally{clearTimeout(timer);}await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));});
   const state=()=>page.evaluate(()=>{const e=document.querySelector('.skip-link'),r=e?.getBoundingClientRect(),s=e?getComputedStyle(e):null;return {activeElement:{tag:document.activeElement?.tagName,className:document.activeElement?.getAttribute('class')},scrollX,scrollY,skipLink:e?{focused:e.matches(':focus'),top:s.top,position:s.position,visibility:s.visibility,rect:{x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom}}:null};});
   const before=await state(),focused=await page.evaluateHandle(()=>document.activeElement);
   let primaryError;
@@ -104,12 +104,13 @@ async function rangeClampRegression(page){
  const collect=(container)=>{const walker=document.createTreeWalker(container,NodeFilter.SHOW_TEXT),out=[];let node,index=0;while((node=walker.nextNode())){if(!node.textContent.trim())continue;const id=index++,parent=node.parentElement,style=getComputedStyle(parent),box=parent.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(node);for(const r of range.getClientRects())if(r.width&&r.height)out.push({left:r.left,right:r.right,top:r.top,bottom:r.bottom,nodeIndex:id,parentSelector:parent.id||parent.tagName,lineClamp:parseInt(style.webkitLineClamp)||0,clipHidden:style.overflowX==='hidden'&&style.overflowY==='hidden',normalLeading:parseFloat(style.lineHeight)>=parseFloat(style.fontSize),parentBox:{left:box.left,right:box.right,top:box.top,bottom:box.bottom}});}return out;};
  const actual=[];for(const summary of await page.locator('.oe-summary').all())actual.push(await summary.evaluate(collect));
  let actualPairs=0;for(const rows of actual)for(let i=0;i<rows.length;i++)for(let j=i+1;j<rows.length;j++)if(clampedRangeDuplicate(rows[i],rows[j]))actualPairs++;
- assert(surface!=='browse'||actualPairs>0,'Browse source paragraphs must exercise the duplicate-range classification; short teen paragraphs may have none');
+ // Real catalog descriptions may be short; the controlled real-DOM positive case below always exercises the classifier.
  const scratch=await page.context().newPage();try{
-  await scratch.setContent('<style>p{position:relative;width:240px;height:70px;font:15px/25.5px Arial}#collision span{position:absolute;left:0;top:0;width:200px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}#plain{height:auto;display:block;overflow:visible}</style><p id="collision"><span id="a">Actual overlap</span><span id="b">Actual overlap</span></p><p id="plain">A long description wraps normally over several lines without a clamp. A long description wraps normally over several lines without a clamp.</p>');
+  await scratch.setContent('<style>p{position:relative;width:240px;height:70px;font:15px/25.5px Arial}#collision span{position:absolute;left:0;top:0;width:200px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}#plain{height:auto;display:block;overflow:visible}#clampPositive{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;height:auto}</style><p id="collision"><span id="a">Actual overlap</span><span id="b">Actual overlap</span></p><p id="plain">A long description wraps normally over several lines without a clamp. A long description wraps normally over several lines without a clamp.</p><p id="clampPositive">A long single text node description wraps and is deliberately ellipsized after its third line. A long single text node description wraps and is deliberately ellipsized after its third line. A long single text node description wraps and is deliberately ellipsized after its third line.</p>');
+  const positive=await scratch.locator('#clampPositive').evaluate(collect);assert(positive.some((a,i)=>positive.slice(i+1).some(b=>clampedRangeDuplicate(a,b))),'Controlled real DOM clamped text must exercise the positive classification');
   const bad=await scratch.locator('#collision').evaluate(collect);assert.equal(bad.length,2);assert(Math.min(bad[0].right,bad[1].right)-Math.max(bad[0].left,bad[1].left)>2);assert(Math.min(bad[0].bottom,bad[1].bottom)-Math.max(bad[0].top,bad[1].top)>2);assert(!clampedRangeDuplicate(bad[0],bad[1]),'Genuinely overlapping separate DOM text nodes remain hard failures');
   const plain=await scratch.locator('#plain').evaluate(collect);for(let i=0;i<plain.length;i++)for(let j=i+1;j<plain.length;j++)assert(!clampedRangeDuplicate(plain[i],plain[j]));
-  log('range-clamp-regression',{actualSourceDuplicatePairs:actualPairs,actualPaintedOverlapTwoNodesNotPromoted:true,unclampedTextNotPromoted:true,productDOMUnmodified:true});
+  log('range-clamp-regression',{actualSourceDuplicatePairs:actualPairs,controlledClampedSingleNodePromoted:true,actualPaintedOverlapTwoNodesNotPromoted:true,unclampedTextNotPromoted:true,productDOMUnmodified:true});
  }finally{await scratch.close();}
 }
 async function geometry(page, label) {
@@ -155,9 +156,21 @@ async function geometry(page, label) {
         }
       }
     }
+    const filterGroupLayout=[];
+    for(const panel of document.querySelectorAll('.oe-filters'))if(visible(panel)){
+      const groups=['.oe-community-filters','.scoped-saved-filters','.accessibility-filter','.oe-clear-support'].map(selector=>({selector,element:panel.querySelector(selector)})).filter(row=>row.element&&visible(row.element)).map(row=>({selector:row.selector,...box(row.element)}));
+      filterGroupLayout.push({viewport:innerWidth,groups});
+      if(innerWidth<=820)for(let i=1;i<groups.length;i++)if(groups[i].y<groups[i-1].bottom-2)issues.push({kind:'related-filter-groups-not-vertically-ordered',previous:groups[i-1],next:groups[i]});
+      const clear=panel.querySelector('.oe-clear-support');if(clear&&visible(clear)){
+        const range=document.createRange();range.selectNodeContents(clear);const rects=[...range.getClientRects()].filter(r=>r.width&&r.height),style=getComputedStyle(clear),r=box(clear);
+        if(rects.length){const inkHeight=Math.max(...rects.map(r=>r.bottom))-Math.min(...rects.map(r=>r.top));const paddingAndBorder=['paddingTop','paddingBottom','borderTopWidth','borderBottomWidth'].reduce((sum,k)=>sum+(parseFloat(style[k])||0),0);const lineLeading=Math.max(0,(parseFloat(style.lineHeight)||0)-Math.max(...rects.map(r=>r.height)));const intrinsicCeiling=Math.max(parseFloat(style.minHeight)||0,inkHeight+lineLeading+paddingAndBorder)+4;
+          if(r.height>intrinsicCeiling)issues.push({kind:'clear-support-button-stretched-beyond-own-label',...r,intrinsicCeiling,inkHeight,lineLeading,paddingAndBorder});
+        }
+      }
+    }
     const checkbox = [...document.querySelectorAll('.accessibility-filter .accessibility-check')].filter(visible).map(label => ({ label: label.textContent.trim(), labelBox: box(label), inputBox: box(label.querySelector('input')) }));
     for (const row of checkbox) if (row.labelBox.height < 47.5 || Math.abs(row.inputBox.width-20) > 1 || Math.abs(row.inputBox.height-20) > 1) issues.push({ kind: 'checkbox-target-size', ...row });
-    return { viewport: innerWidth, issues, metricWarnings, checkboxCount: checkbox.length, pathwayBoxes: [...document.querySelectorAll('.hs-pathways li')].filter(visible).map(box) };
+    return { viewport: innerWidth, issues, metricWarnings, filterGroupLayout, checkboxCount: checkbox.length, pathwayBoxes: [...document.querySelectorAll('.hs-pathways li')].filter(visible).map(box) };
   });
   const clampArtifacts=result.issues.filter(issue=>issue.kind==='same-line-text-fragment-overlap'&&issue.fragments?.length===2&&clampedRangeDuplicate(issue.fragments[0],issue.fragments[1]));
   result.issues=result.issues.filter(issue=>!clampArtifacts.includes(issue));
@@ -190,11 +203,11 @@ async function enlargeFonts(page) {
     const immediate=rows.map(({e})=>snapshot(e));
     const activeFontTransitionsBeforeSettle=document.getAnimations().filter(a=>a.effect?.getKeyframes().some(f=>typeof f.fontSize==='string')).length;
     const relevantAnimations=document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity && a.effect?.target instanceof Element && a.effect.target.checkVisibility({visibilityProperty:true,contentVisibilityAuto:true}));
-    let settleTimer;try{await Promise.race([Promise.allSettled(relevantAnimations.map(a=>a.finished)),new Promise((_,reject)=>{settleTimer=setTimeout(()=>reject(new Error('Rendered finite animation did not settle within3000ms: '+JSON.stringify(relevantAnimations.filter(a=>a.playState!=='finished').map(a=>({type:a.constructor.name,state:a.playState,properties:a.effect?.getKeyframes().map(f=>Object.keys(f)).flat()})).slice(0,5)))),3000);})]);}finally{clearTimeout(settleTimer);} 
+    let settleTimer;try{await Promise.race([Promise.allSettled(relevantAnimations.map(a=>a.finished)),new Promise((_,reject)=>{settleTimer=setTimeout(()=>reject(new Error('Rendered finite animation did not settle within3000ms; visibility='+document.visibilityState+'; hasFocus='+document.hasFocus()+'; '+JSON.stringify(relevantAnimations.filter(a=>a.playState!=='finished').map(a=>({type:a.constructor.name,state:a.playState,properties:a.effect?.getKeyframes().map(f=>Object.keys(f)).flat()})).slice(0,5)))),3000);})]);}finally{clearTimeout(settleTimer);} 
     await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     const diagnostics=rows.map(({e,before,beforeState},index)=>({before,beforeState,immediate:immediate[index],settled:snapshot(e)}));
     const samples = rows.filter(({e}) => e.getClientRects().length > 0 && e.checkVisibility({visibilityProperty:true,contentVisibilityAuto:true})).map(({e,before,beforeState}) => ({ element: e.tagName, selector:beforeState.selector, before, after: parseFloat(getComputedStyle(e).fontSize) }));
-    return { count: rows.length, samples, diagnostics, fontReadiness:document.fonts.status, actualTwoAnimationFramesWaited:true,activeFontTransitionsBeforeSettle,finiteAnimationsSettledBeforeMeasurement:true };
+    return { count: rows.length, samples, diagnostics, fontReadiness:document.fonts.status, actualTwoAnimationFramesWaited:true,activeFontTransitionsBeforeSettle,finiteAnimationsSettledBeforeMeasurement:true,documentVisibilityAtMeasurement:document.visibilityState,documentHasFocusAtMeasurement:document.hasFocus() };
   });
 }
 async function savePreset(page, name) {
